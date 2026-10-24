@@ -1448,6 +1448,7 @@ class MainWindow(QMainWindow):
 
         worker = WhisperModelDownloadWorker(model_size, self)
         self._model_download_worker = worker
+        worker.progress.connect(self._on_whisper_model_download_progress)
         worker.completed.connect(self._on_whisper_model_downloaded)
         worker.failed.connect(self._on_whisper_model_download_failed)
         if self._settings_dialog is not None:
@@ -1458,6 +1459,14 @@ class MainWindow(QMainWindow):
             )
         self.status_label.setText(f"Downloading Whisper {model_size} model…")
         worker.start()
+
+    def _on_whisper_model_download_progress(
+        self, model_size, downloaded_bytes, total_bytes
+    ):
+        if self._settings_dialog is not None:
+            self._settings_dialog.set_model_download_progress(
+                model_size, downloaded_bytes, total_bytes
+            )
 
     def _on_whisper_model_downloaded(self, model_size, _local_path):
         if self._settings_dialog is not None:

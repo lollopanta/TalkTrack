@@ -473,6 +473,8 @@ class SettingsDialog(QDialog):
         model_size = self.model_combo.currentData()
         self.model_combo.setEnabled(True)
         self.model_download_progress.hide()
+        self.model_download_progress.setRange(0, 100)
+        self.model_download_progress.setValue(0)
         snapshots = whisper_cache_dir(model_size) / "snapshots"
         downloaded = snapshots.exists() and any(
             (snapshot / "model.bin").is_file()
@@ -495,12 +497,33 @@ class SettingsDialog(QDialog):
             return
         self.model_download_status.setText(message)
         self.model_download_progress.setVisible(running)
+        if running:
+            self.model_download_progress.setRange(0, 0)
         self.model_combo.setEnabled(not running)
         self.download_model_btn.setEnabled(not running and not ready)
         if ready:
             self.download_model_btn.setText("Model downloaded")
         elif not running:
             self.download_model_btn.setText("Download model")
+
+    def set_model_download_progress(self, model_size, downloaded_bytes, total_bytes):
+        """Show aggregate byte and percentage progress for the active download."""
+        if self.model_combo.currentData() != model_size:
+            return
+        if total_bytes <= 0:
+            self.model_download_status.setText("Checking model files…")
+            self.model_download_progress.setRange(0, 0)
+            return
+
+        percent = min(100, int(downloaded_bytes * 100 / total_bytes))
+        downloaded_mb = downloaded_bytes / 1_000_000
+        total_mb = total_bytes / 1_000_000
+        self.model_download_status.setText(
+            f"Downloading {model_size}: {percent}% · "
+            f"{downloaded_mb:,.0f} MB / {total_mb:,.0f} MB"
+        )
+        self.model_download_progress.setRange(0, 100)
+        self.model_download_progress.setValue(percent)
 
     def _load_settings(self):
         # General
