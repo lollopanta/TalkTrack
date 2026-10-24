@@ -2,9 +2,12 @@
 # beside the frozen Python modules so existing resource lookup continues to work.
 import sys
 import os
+import subprocess
 from pathlib import Path
 
-from PyInstaller.utils.hooks import collect_all, collect_submodules
+from PyInstaller.utils.hooks import (
+    collect_all, collect_data_files, collect_submodules,
+)
 
 
 root = Path(SPECPATH)
@@ -12,10 +15,33 @@ is_macos = sys.platform == "darwin"
 build_profile = os.environ.get("TALKTRACK_BUILD_PROFILE", "full").strip().lower()
 if build_profile not in {"compact", "full"}:
     raise SystemExit("TALKTRACK_BUILD_PROFILE must be 'compact' or 'full'.")
-app_icon = root / "resources" / (
-    "talktrack.icns" if is_macos else "talktrack.ico"
-)
+if is_macos:
+    # Finder reads an ICNS through the app bundle's Info.plist; the source PNG
+    # alone does not provide a custom icon for the compiled .app.
+    icon_source = root / "resources" / "TT_icon_512x512.png"
+    iconset = root / ".build" / "TalkTrack.iconset"
+    app_icon = root / ".build" / "talktrack.icns"
+    iconset.mkdir(parents=True, exist_ok=True)
+    for filename, size in (
+        ("icon_16x16.png", 16), ("icon_16x16@2x.png", 32),
+        ("icon_32x32.png", 32), ("icon_32x32@2x.png", 64),
+        ("icon_128x128.png", 128), ("icon_128x128@2x.png", 256),
+        ("icon_256x256.png", 256), ("icon_256x256@2x.png", 512),
+    ):
+        subprocess.run(
+            ["sips", "-z", str(size), str(size), str(icon_source),
+             "--out", str(iconset / filename)],
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
+    subprocess.run(
+        ["iconutil", "-c", "icns", str(iconset), "-o", str(app_icon)],
+        check=True,
+    )
+else:
+    app_icon = root / "resources" / "talktrack.ico"
 datas = [(str(root / "resources"), "resources")]
+datas.extend(collect_data_files("faster_whisper"))
 binaries = []
 hiddenimports = (
     collect_submodules("app.ai")
@@ -86,7 +112,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=str(app_icon) if app_icon.is_file() else None,
+    icon=str(app_icon),
 )
 coll = COLLECT(
     exe,
@@ -102,7 +128,7 @@ if is_macos:
     app = BUNDLE(
         coll,
         name="TalkTrack.app",
-        icon=str(app_icon) if app_icon.is_file() else None,
+        icon=str(app_icon),
         bundle_identifier="com.talktrack.app",
         info_plist={
             "NSAudioCaptureUsageDescription": (
