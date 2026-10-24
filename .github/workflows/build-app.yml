@@ -16,7 +16,8 @@ concurrency:
 
 jobs:
   build:
-    name: Build ${{ matrix.platform }}
+    name: Build ${{ matrix.platform }} (${{ matrix.profile }})
+    if: ${{ matrix.profile == 'compact' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     strategy:
@@ -25,10 +26,20 @@ jobs:
         include:
           - platform: macOS-arm64
             runner: macos-15
-            artifact: macos-arm64
+            artifact: macos-arm64-compact
+            profile: compact
+          - platform: macOS-arm64
+            runner: macos-15
+            artifact: macos-arm64-full
+            profile: full
           - platform: Windows-x64
             runner: windows-2022
-            artifact: windows-x64
+            artifact: windows-x64-compact
+            profile: compact
+          - platform: Windows-x64
+            runner: windows-2022
+            artifact: windows-x64-full
+            profile: full
 
     steps:
       - uses: actions/checkout@v7
@@ -37,16 +48,18 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-          cache-dependency-path: requirements.txt
+          cache-dependency-path: |
+            requirements.txt
+            requirements-compact.txt
 
       - name: Install CPU PyTorch (Windows)
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && matrix.profile == 'full'
         run: python -m pip install --upgrade pip torch torchaudio --index-url https://download.pytorch.org/whl/cpu
 
       - name: Install application dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt
+          python -m pip install -r ${{ matrix.profile == 'compact' && 'requirements-compact.txt' || 'requirements.txt' }}
           python -m pip install anthropic openai google-generativeai mistralai groq pyinstaller
 
       - name: Build native macOS audio helper
@@ -69,6 +82,8 @@ jobs:
           iconutil -c icns resources/TalkTrack.iconset -o resources/talktrack.icns
 
       - name: Freeze application
+        env:
+          TALKTRACK_BUILD_PROFILE: ${{ matrix.profile }}
         run: python -m PyInstaller --noconfirm --clean TalkTrack.spec
 
       - name: Verify bundled macOS audio helper

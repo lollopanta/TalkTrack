@@ -31,7 +31,9 @@ from app.recording.recorder import Recorder, RecordingState
 from app.recording.audio_import import AudioImportWorker
 from app.transcription.model_downloader import WhisperModelDownloadWorker
 from app.transcription.transcriber import TranscriptionWorker, TranscriptResult
-from app.transcription.diarizer import DiarizationWorker, SimpleDiarizeWorker
+from app.transcription.diarizer import (
+    DiarizationWorker, SimpleDiarizeWorker, diarization_runtime_available,
+)
 from app.ui.recording_controls import RecordingControls
 from app.ui.meters_panel import MetersPanel
 from app.ui.source_selector import SourceSelector
@@ -987,7 +989,7 @@ class MainWindow(QMainWindow):
         diarization_enabled = self.config.get("diarization", "enabled")
         hf_token = self.config.get("diarization", "hf_token")
 
-        if diarization_enabled and hf_token:
+        if diarization_enabled and hf_token and diarization_runtime_available():
             # Run full diarization with pyannote
             self._start_diarization(result, session)
         elif session:
@@ -1001,6 +1003,10 @@ class MainWindow(QMainWindow):
                 self._start_simple_diarization(result, session, mic_path, sys_path)
             else:
                 self._display_final_transcript(result, session)
+                if diarization_enabled and hf_token:
+                    self.status_label.setText(
+                        "Transcription complete — voice based speaker labels require the Full build"
+                    )
         else:
             self._display_final_transcript(result, session)
 

@@ -1,3 +1,4 @@
+import sys
 import platform
 from pathlib import Path
 
@@ -5,6 +6,25 @@ import sounddevice as sd
 
 
 MACOS_CORE_AUDIO_TAP_DEVICE = "talktrack:core-audio-tap"
+
+
+def macos_core_audio_helper_path():
+    """Locate the native audio helper in a source checkout or frozen app."""
+    source_path = (
+        Path(__file__).resolve().parents[2] / ".build"
+        / "TalkTrackAudioCapture.app" / "Contents" / "MacOS"
+        / "TalkTrackAudioCapture"
+    )
+    if source_path.is_file():
+        return source_path
+
+    bundle_root = getattr(sys, "_MEIPASS", None)
+    if bundle_root:
+        return (
+            Path(bundle_root) / "talktrack_audio_helper" / "Contents"
+            / "MacOS" / "TalkTrackAudioCapture"
+        )
+    return source_path
 
 
 def _macos_core_audio_taps_available():
@@ -16,10 +36,7 @@ def _macos_core_audio_taps_available():
         return False
     if parts < (14, 4):
         return False
-    helper = (Path(__file__).resolve().parents[2] / ".build"
-              / "TalkTrackAudioCapture.app" / "Contents" / "MacOS"
-              / "TalkTrackAudioCapture")
-    return helper.is_file()
+    return macos_core_audio_helper_path().is_file()
 
 
 def _is_hidden(name, hidden_devices):

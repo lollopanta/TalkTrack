@@ -10,6 +10,7 @@ from enum import Enum
 from PyQt6.QtCore import QObject, pyqtSignal, QThread
 
 from app.recording.audio_capture import DualAudioCapture
+from app.utils.ffmpeg import find_ffmpeg
 
 logger = logging.getLogger(__name__)
 
@@ -190,9 +191,13 @@ class Recorder(QObject):
             if not wav_path or not wav_path.endswith(".wav"):
                 continue
             mp3_path = wav_path.replace(".wav", ".mp3")
+            ffmpeg = find_ffmpeg()
+            if not ffmpeg:
+                logger.warning("FFmpeg not found — keeping WAV file %s", wav_path)
+                continue
             try:
                 subprocess.run(
-                    ["ffmpeg", "-y", "-i", wav_path, "-codec:a", "libmp3lame",
+                    [ffmpeg, "-y", "-i", wav_path, "-codec:a", "libmp3lame",
                      "-qscale:a", "2", mp3_path],
                     capture_output=True, check=True, timeout=300,
                 )

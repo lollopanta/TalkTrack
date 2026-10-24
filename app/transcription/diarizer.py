@@ -1,4 +1,5 @@
 import logging
+import importlib.util
 import threading
 from dataclasses import dataclass
 from PyQt6.QtCore import QThread, pyqtSignal
@@ -12,6 +13,17 @@ logger = logging.getLogger(__name__)
 # A CPU pipeline and a CUDA pipeline are distinct objects, hence the device in the key.
 _PIPELINE_CACHE = {}
 _PIPELINE_CACHE_LOCK = threading.Lock()
+
+
+def diarization_runtime_available():
+    """Return whether the optional PyTorch and pyannote stack is installed."""
+    try:
+        return (
+            importlib.util.find_spec("torch") is not None
+            and importlib.util.find_spec("pyannote.audio") is not None
+        )
+    except (ImportError, ModuleNotFoundError, ValueError):
+        return False
 
 
 def _resolve_device(device):

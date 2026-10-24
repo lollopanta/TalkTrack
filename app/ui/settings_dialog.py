@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 from app.utils.platform_info import is_macos, is_windows_11
 from app.utils.dependency_checker import whisper_cache_dir
+from app.transcription.diarizer import diarization_runtime_available
 
 _LANGUAGE_NAMES = {
     "ar": "Arabic", "bn": "Bengali", "bg": "Bulgarian", "ca": "Catalan",
@@ -343,6 +344,16 @@ class SettingsDialog(QDialog):
         self.diarization_enabled = QCheckBox("Enable speaker diarization")
         diarization_form.addRow(self.diarization_enabled)
 
+        self.diarization_runtime_notice = QLabel(
+            "Speaker labels from voice analysis require the Full build. "
+            "Channel based speaker separation remains available."
+        )
+        self.diarization_runtime_notice.setWordWrap(True)
+        runtime_available = diarization_runtime_available()
+        self.diarization_runtime_notice.setVisible(not runtime_available)
+        self.diarization_enabled.setEnabled(runtime_available)
+        diarization_form.addRow(self.diarization_runtime_notice)
+
         self.hf_token_edit = QLineEdit()
         self.hf_token_edit.setPlaceholderText("hf_xxxxxxxxxxxx")
         self.hf_token_edit.setEchoMode(QLineEdit.EchoMode.Password)
@@ -355,21 +366,25 @@ class SettingsDialog(QDialog):
             'style="color: #B8A7FF;">Accept model terms</a>'
         )
         token_help.setOpenExternalLinks(True)
+        token_help.setEnabled(runtime_available)
         diarization_form.addRow("", token_help)
 
         self.setup_wizard_btn = QPushButton("Setup Wizard...")
         self.setup_wizard_btn.setToolTip("Open the step-by-step diarization setup guide")
+        self.setup_wizard_btn.setEnabled(runtime_available)
         self.setup_wizard_btn.clicked.connect(self._open_setup_wizard)
         diarization_form.addRow("", self.setup_wizard_btn)
 
         self.min_speakers_spin = QSpinBox()
         self.min_speakers_spin.setRange(0, 20)
         self.min_speakers_spin.setSpecialValueText("Auto")
+        self.min_speakers_spin.setEnabled(runtime_available)
         diarization_form.addRow("Min Speakers:", self.min_speakers_spin)
 
         self.max_speakers_spin = QSpinBox()
         self.max_speakers_spin.setRange(0, 20)
         self.max_speakers_spin.setSpecialValueText("Auto")
+        self.max_speakers_spin.setEnabled(runtime_available)
         diarization_form.addRow("Max Speakers:", self.max_speakers_spin)
 
         transcription_layout.addWidget(diarization_group)

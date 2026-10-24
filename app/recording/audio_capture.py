@@ -11,7 +11,9 @@ from pathlib import Path
 
 from app.recording.chunk_writer import ChunkWriter
 from app.audio.resampler import Resampler as _Resampler
-from app.utils.audio_devices import MACOS_CORE_AUDIO_TAP_DEVICE
+from app.utils.audio_devices import (
+    MACOS_CORE_AUDIO_TAP_DEVICE, macos_core_audio_helper_path,
+)
 if platform.system() == "Windows":
     from app.recording.process_audio_capture import ProcessAudioCapture
 else:
@@ -245,9 +247,7 @@ class LoopbackStream:
 
     def _start_macos_core_audio_tap(self):
         """Start the bundled Core Audio tap helper and read its PCM stream."""
-        helper = (Path(__file__).resolve().parents[2] / ".build"
-                  / "TalkTrackAudioCapture.app" / "Contents" / "MacOS"
-                  / "TalkTrackAudioCapture")
+        helper = macos_core_audio_helper_path()
         if not helper.is_file():
             raise RuntimeError(
                 "The native macOS audio helper is not built. Run ./start.command "

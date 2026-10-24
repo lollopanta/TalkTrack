@@ -1,6 +1,7 @@
 # PyInstaller one-folder build. Keep resources and the native CoreAudio helper
 # beside the frozen Python modules so existing resource lookup continues to work.
 import sys
+import os
 from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_all, collect_submodules
@@ -8,6 +9,9 @@ from PyInstaller.utils.hooks import collect_all, collect_submodules
 
 root = Path(SPECPATH)
 is_macos = sys.platform == "darwin"
+build_profile = os.environ.get("TALKTRACK_BUILD_PROFILE", "full").strip().lower()
+if build_profile not in {"compact", "full"}:
+    raise SystemExit("TALKTRACK_BUILD_PROFILE must be 'compact' or 'full'.")
 app_icon = root / "resources" / (
     "talktrack.icns" if is_macos else "talktrack.ico"
 )
@@ -36,9 +40,9 @@ if is_macos:
         raise SystemExit("The CoreAudio helper bundle is incomplete.")
     # Keep the executable in PyInstaller's binary collection so its +x mode and
     # Mach-O handling survive the freeze; the privacy usage string lives in its
-    # nested app bundle's Info.plist.
-    binaries.append((str(helper_binary), ".build/TalkTrackAudioCapture.app/Contents/MacOS"))
-    datas.append((str(helper_info), ".build/TalkTrackAudioCapture.app/Contents"))
+    # helper Info.plist.
+    binaries.append((str(helper_binary), "talktrack_audio_helper/Contents/MacOS"))
+    datas.append((str(helper_info), "talktrack_audio_helper/Contents"))
 
 a = Analysis(
     [str(root / "main.py")],
@@ -49,7 +53,19 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    # The Compact profile keeps Whisper transcription and channel based
+    # speaker separation, while leaving the much larger pyannote/PyTorch stack
+    # out. Full remains the default for local builds and includes all features.
+    excludes=(
+        [
+            "torch", "torchaudio", "torchvision", "torchcodec",
+            "pyannote", "pytorch_lightning", "lightning", "torchmetrics",
+            "transformers", "sentence_transformers",
+            "librosa", "matplotlib", "pandas", "sympy", "sklearn",
+        ]
+        if build_profile == "compact"
+        else []
+    ),
     noarchive=False,
     optimize=0,
 )

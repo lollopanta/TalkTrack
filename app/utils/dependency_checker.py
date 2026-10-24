@@ -1,10 +1,10 @@
 """Dependency checker for TalkTrack system status panel."""
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 from app.utils.audio_devices import get_input_devices, get_wasapi_output_devices
+from app.utils.ffmpeg import find_ffmpeg
 from app.utils.platform_info import is_windows, is_windows_11, get_windows_build
 
 
@@ -55,10 +55,31 @@ class DependencyChecker:
         """
         import importlib
         import importlib.metadata as md
+        import importlib.util
+
+        # PyTorch is optional in Compact builds; its absence is expected there.
+        if "torch" in packages:
+            try:
+                if importlib.util.find_spec("torch") is None:
+                    packages = tuple(pkg for pkg in packages if pkg != "torch")
+            except (ImportError, ModuleNotFoundError, ValueError):
+                packages = tuple(pkg for pkg in packages if pkg != "torch")
 
         damaged = []
         missing = []
         for pkg in packages:
+            import_name = pkg.replace("-", "_")
+            if getattr(sys, "frozen", False):
+                # PyInstaller bundles importable modules, not their dist-info
+                # metadata by default. Missing metadata in a frozen app is
+                # expected and must not be reported as a broken installation.
+                try:
+                    available = importlib.util.find_spec(import_name) is not None
+                except (ImportError, ModuleNotFoundError, ValueError):
+                    available = False
+                if not available:
+                    missing.append(pkg)
+                continue
             try:
                 version = md.version(pkg)
             except md.PackageNotFoundError:
@@ -67,7 +88,6 @@ class DependencyChecker:
                 version = None
             if version:
                 continue
-            import_name = pkg.replace("-", "_")
             try:
                 importlib.import_module(import_name)
                 damaged.append(pkg)
@@ -325,6 +345,15 @@ class DependencyChecker:
 
     def check_hf_token(self):
         """Check if a HuggingFace token is configured for diarization."""
+        from app.transcription.diarizer import diarization_runtime_available
+        if not diarization_runtime_available():
+            return {
+                "name": "HuggingFace Token",
+                "passed": True,
+                "level": "warn",
+                "message": "Voice based speaker labels are not included in this build.",
+                "action": "Use the Full build to enable pyannote speaker diarization.",
+            }
         hf_token = ""
         if self.config:
             try:
@@ -351,6 +380,15 @@ class DependencyChecker:
 
     def check_pyannote_models(self):
         """Check if pyannote speaker diarization models are cached."""
+        from app.transcription.diarizer import diarization_runtime_available
+        if not diarization_runtime_available():
+            return {
+                "name": "Pyannote Models",
+                "passed": True,
+                "level": "warn",
+                "message": "Pyannote is not included in this Compact build.",
+                "action": "Use the Full build for voice based speaker labels.",
+            }
         cache_dir = Path.home() / ".cache" / "huggingface" / "hub" / "models--pyannote--speaker-diarization-community-1"
         if cache_dir.exists():
             return {
@@ -370,8 +408,8 @@ class DependencyChecker:
             }
 
     def check_ffmpeg(self):
-        """Check if ffmpeg is installed and available on PATH."""
-        ffmpeg_path = shutil.which("ffmpeg")
+        """Check if ffmpeg is available to the app."""
+        ffmpeg_path = find_ffmpeg()
         if ffmpeg_path:
             return {
                 "name": "FFmpeg",
@@ -385,7 +423,7 @@ class DependencyChecker:
                 "name": "FFmpeg",
                 "passed": False,
                 "level": "warn",
-                "message": "FFmpeg not found on PATH.",
+                "message": "FFmpeg not found on PATH or in common macOS install locations.",
                 "action": 'Install FFmpeg for audio format conversion support: <a href="https://github.com/BtbN/FFmpeg-Builds">Download FFmpeg</a>',
             }
 
