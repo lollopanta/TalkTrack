@@ -1,11 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 256 256" role="img" aria-labelledby="title">
   <title id="title">TalkTrack app icon</title>
-  <rect width="254" height="254" x="1" y="1" rx="58" fill="#F5F0FF" stroke="#D8CEF2" stroke-width="2"/>
-  <g fill="#6C45F5" transform="translate(32 32) scale(.75)">
-    <path d="M42 76V48H88V68H62V94H42Z"/>
-    <path d="M214 76V48H168V68H194V94H214Z"/>
-    <path d="M42 180V208H88V188H62V162H42Z"/>
-    <path d="M214 180V208H168V188H194V162H214Z"/>
+  <g transform="translate(-70.4 -58) scale(1.55)">
+    <g fill="#6C45F5" transform="translate(32 32) scale(.75)">
+      <path d="M42 76V48H88V68H62V94H42Z"/>
+      <path d="M214 76V48H168V68H194V94H214Z"/>
+      <path d="M42 180V208H88V188H62V162H42Z"/>
+      <path d="M214 180V208H168V188H194V162H214Z"/>
+    </g>
+    <circle cx="128" cy="128" r="24" fill="#E44747"/>
   </g>
-  <circle cx="128" cy="128" r="24" fill="#E44747"/>
 </svg>
