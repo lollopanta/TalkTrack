@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>TalkTrack concept A — Confluence, color study</title>
+  <g fill="none" stroke-width="30" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="#3867E8" d="M32 58 H72 C104 58 101 108 128 128"/>
+    <path stroke="#0B877A" d="M32 198 H72 C104 198 101 148 128 128"/>
+    <path stroke="#24344B" d="M128 128 H224"/>
+  </g>
+</svg>

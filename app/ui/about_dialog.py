@@ -1,7 +1,10 @@
 """About TalkTrack dialog."""
 
 import webbrowser
+from pathlib import Path
+
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QPushButton, QHBoxLayout,
 )
@@ -14,12 +17,20 @@ class AboutDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("About TalkTrack")
-        self.setFixedSize(400, 280)
+        self.setFixedSize(400, 320)
         self._setup_ui()
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setSpacing(12)
+
+        logo = QLabel()
+        logo.setPixmap(QPixmap(str(
+            Path(__file__).resolve().parents[2] / "resources" / "TT_icon_128x128.png"
+        )).scaled(64, 64, Qt.AspectRatioMode.KeepAspectRatio,
+                  Qt.TransformationMode.SmoothTransformation))
+        logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(logo)
 
         title = QLabel("TalkTrack")
         title.setStyleSheet("font-size: 24px; font-weight: bold; color: #cdd6f4;")

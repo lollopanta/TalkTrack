@@ -1,5 +1,7 @@
 # TalkTrack
 
+<p align="center"><img src="resources/TT_logo_1300x400.png" alt="TalkTrack" width="520"></p>
+
 Record, transcribe, and identify speakers from your calls. Recording and transcription run locally; optional AI providers can process transcript text in the cloud. Free and open-source alternative to Evaer, Otter.ai, and Fireflies.
 
 TalkTrack is a desktop app for **recording and transcribing Microsoft Teams calls, Zoom meetings, Google Meet sessions**, and other audio apps on Windows and macOS. It uses [Faster Whisper](https://github.com/SYSTRAN/faster-whisper) for local speech-to-text and [pyannote.audio](https://github.com/pyannote/pyannote-audio) for speaker identification. Transcription runs locally; optional AI features can use cloud providers.
@@ -295,11 +297,15 @@ TalkTrack/
   requirements.txt           # Dependencies
   resources/
     style.qss                # Dark theme stylesheet
-    talktrack.ico             # App icon (multi-size)
+    talktrack.ico             # Windows taskbar and tray icon (multi-size)
+    talktrack-app-icon.svg    # App icon source
+    talktrack-mark.svg        # Logo symbol source
+    TT_logo.svg               # Horizontal wordmark source
+    BRAND.md                  # Palette and usage notes
     arrow_up.png, arrow_down.png  # QSpinBox arrow icons
     build_ico.py              # Rebuild .ico from source PNGs
     TT_icon_*.png             # Icon source files (32-512px)
-    TT_logo_*.png             # Logo files for branding
+    TT_logo_*.png             # Raster wordmark exports
   app/
     main_window.py           # Main window + orchestration
     audio/

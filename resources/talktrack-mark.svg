@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title">
+  <title id="title">TalkTrack mark</title>
+  <g fill="#6C45F5">
+    <path d="M42 76V48H88V68H62V94H42Z"/>
+    <path d="M214 76V48H168V68H194V94H214Z"/>
+    <path d="M42 180V208H88V188H62V162H42Z"/>
+    <path d="M214 180V208H168V188H194V162H214Z"/>
+  </g>
+  <circle cx="128" cy="128" r="24" fill="#E44747"/>
+</svg>

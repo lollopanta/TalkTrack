@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>TalkTrack concept C — Record Cursor</title>
+  <g fill="#111111">
+    <rect x="28" y="54" width="82" height="38" rx="10"/>
+    <rect x="146" y="54" width="82" height="38" rx="10"/>
+    <rect x="110" y="86" width="36" height="138" rx="10"/>
+    <circle cx="128" cy="73" r="16"/>
+  </g>
+</svg>

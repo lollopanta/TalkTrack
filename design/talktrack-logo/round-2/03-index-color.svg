@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>TalkTrack concept C — Index, color study</title>
+  <g fill="#1F6B67">
+    <rect x="34" y="48" width="156" height="34" rx="12"/>
+    <rect x="34" y="111" width="188" height="34" rx="12"/>
+    <rect x="34" y="174" width="126" height="34" rx="12"/>
+  </g>
+  <path d="M190 48 H222 V88 L206 72 L190 88 Z" fill="#CF5949"/>
+</svg>

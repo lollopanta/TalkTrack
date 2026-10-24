@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>TalkTrack concept B — Highlight, red marker study</title>
+  <g fill="#6C45F5">
+    <path d="M42 76 V48 H88 V68 H62 V94 H42 Z"/>
+    <path d="M214 76 V48 H168 V68 H194 V94 H214 Z"/>
+    <path d="M42 180 V208 H88 V188 H62 V162 H42 Z"/>
+    <path d="M214 180 V208 H168 V188 H194 V162 H214 Z"/>
+  </g>
+  <circle cx="128" cy="128" r="24" fill="#E44747"/>
+</svg>

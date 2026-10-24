@@ -122,10 +122,13 @@ TalkTrack/
     style.qss                          # Dark theme stylesheet (Catppuccin Mocha)
     talktrack.ico                      # App icon (multi-size: 16-256px)
     build_ico.py                       # Rebuild .ico from source PNGs
-    generate_icon.py                   # Old programmatic icon generator (deprecated)
+    generate_icon.py                   # Rebuild Windows icon from checked-in PNG variants
     favicon.ico                        # Favicon for web use
     TT_icon_*.png                      # Icon source files (32, 64, 128, 256, 512px)
     TT_logo_*.png                      # Logo files (655x200, 1300x400)
+    talktrack-mark*.svg                # Full-color and monochrome logo masters
+    TT_logo.svg                        # Outlined horizontal wordmark master
+    BRAND.md                           # Palette and logo usage notes
   scripts/
     find_call_audio_pid.py             # Diagnostic: which PID renders call audio
     prune_redundant_wavs.py            # One-time cleanup of pre-#60 duplicate WAVs

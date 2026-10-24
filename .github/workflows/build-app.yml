@@ -75,8 +75,14 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          helper="$(find dist/TalkTrack.app -path '*/.build/TalkTrackAudioCapture.app/Contents/MacOS/TalkTrackAudioCapture' -type f -print -quit)"
+          helper="$(find dist/TalkTrack.app -type f -name TalkTrackAudioCapture -print -quit)"
+          if [ -z "$helper" ]; then
+            find dist/TalkTrack.app -maxdepth 7 -type f -print
+            echo "Bundled CoreAudio helper was not found." >&2
+            exit 1
+          fi
           test -n "$helper"
+          chmod +x "$helper"
           test -x "$helper"
 
       - name: Package macOS app

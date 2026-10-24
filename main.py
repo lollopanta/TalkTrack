@@ -201,17 +201,17 @@ def main():
     from PyQt6.QtGui import QPixmap, QPainter, QColor, QFont
     from PyQt6.QtCore import Qt
 
-    splash_pixmap = QPixmap(340, 120)
+    splash_pixmap = QPixmap(380, 140)
     splash_pixmap.fill(QColor("#1e1e2e"))
     painter = QPainter(splash_pixmap)
-    painter.setPen(QColor("#89b4fa"))
+    splash_icon = QPixmap(str(Path(__file__).parent / "resources" / "TT_icon_64x64.png"))
+    painter.drawPixmap(42, 38, 64, 64, splash_icon)
+    painter.setPen(QColor("#cdd6f4"))
     painter.setFont(QFont("Segoe UI", 18, QFont.Weight.Bold))
-    painter.drawText(splash_pixmap.rect(), Qt.AlignmentFlag.AlignCenter, "TalkTrack")
+    painter.drawText(122, 67, 220, 32, Qt.AlignmentFlag.AlignLeft, "TalkTrack")
     painter.setPen(QColor("#a6adc8"))
     painter.setFont(QFont("Segoe UI", 10))
-    r = splash_pixmap.rect()
-    r.setTop(r.center().y() + 10)
-    painter.drawText(r, Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop, "Loading...")
+    painter.drawText(122, 91, 220, 30, Qt.AlignmentFlag.AlignLeft, "Loading...")
     painter.end()
 
     splash = QSplashScreen(splash_pixmap)

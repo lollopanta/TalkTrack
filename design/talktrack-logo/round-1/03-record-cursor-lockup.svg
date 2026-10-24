@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="540" height="160" viewBox="0 0 540 160">
+  <title>TalkTrack concept C — exploratory lockup</title>
+  <g fill="#111111" transform="translate(8 8) scale(.56)">
+    <rect x="28" y="54" width="82" height="38" rx="10"/>
+    <rect x="146" y="54" width="82" height="38" rx="10"/>
+    <rect x="110" y="86" width="36" height="138" rx="10"/>
+    <circle cx="128" cy="73" r="16"/>
+  </g>
+  <text x="164" y="106" fill="#111111" font-family="Avenir Next, Inter, Arial, sans-serif" font-size="52" font-weight="650" letter-spacing="-1.4">TalkTrack</text>
+</svg>
