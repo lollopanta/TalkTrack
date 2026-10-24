@@ -65,8 +65,8 @@ _MENUBAR_ICON_2X = (
 _IS_MACOS = platform.system() == "Darwin"
 
 _DOT_COLORS = {
-    "green": QColor("#a6e3a1"),
-    "red": QColor("#f38ba8"),
+    "green": QColor("#62C391"),
+    "red": QColor("#E44747"),
 }
 _LIGHT_DOT_COLORS = {
     "green": QColor("#267d3a"),
@@ -235,7 +235,7 @@ class TrayIcon(QObject):
             margin = 2
             x = size - diameter - margin
             y = size - diameter - margin
-            painter.setPen(QPen(QColor("#1e1e2e"), 1))
+            painter.setPen(QPen(QColor("#14141B"), 1))
         painter.setBrush(color)
         painter.drawEllipse(x, y, diameter, diameter)
         painter.end()

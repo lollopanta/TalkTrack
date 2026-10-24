@@ -27,8 +27,9 @@ class SearchBar(QWidget):
         layout.addWidget(self._input)
 
         self._mode_btn = QPushButton("Aa")
+        self._mode_btn.setObjectName("searchModeButton")
         self._mode_btn.setToolTip("Text search (click for semantic)")
-        self._mode_btn.setFixedWidth(30)
+        self._mode_btn.setFixedWidth(42)
         self._mode_btn.setCheckable(True)
         self._mode_btn.toggled.connect(self._toggle_mode)
         layout.addWidget(self._mode_btn)

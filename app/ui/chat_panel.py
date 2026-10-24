@@ -21,12 +21,12 @@ class ChatMessage(QWidget):
 
         if role == "user":
             label.setStyleSheet(
-                "background-color: #313244; color: #cdd6f4; "
+                "background-color: #34333E; color: #F1EFF6; "
                 "padding: 8px; border-radius: 8px; font-size: 13px;"
             )
         else:
             label.setStyleSheet(
-                "background-color: #1e1e2e; color: #cdd6f4; "
+                "background-color: #14141B; color: #F1EFF6; "
                 "padding: 8px; border-radius: 8px; font-size: 13px;"
             )
 
@@ -68,7 +68,7 @@ class ChatPanel(QWidget):
         self._no_provider_label = QLabel(
             "AI provider not configured. Go to Settings > AI Assistant to set up."
         )
-        self._no_provider_label.setStyleSheet("color: #a6adc8; padding: 16px;")
+        self._no_provider_label.setStyleSheet("color: #A09CA9; padding: 16px;")
         self._no_provider_label.setWordWrap(True)
         layout.addWidget(self._no_provider_label)
 

@@ -105,13 +105,13 @@ class SystemStatusDialog(QDialog):
 
         if critical_fails:
             summary_text = f"{passed}/{total} checks passed. {len(critical_fails)} critical issue(s)."
-            summary_style = "color: #f38ba8;"
+            summary_style = "color: #E44747;"
         elif passed < total:
             summary_text = f"{passed}/{total} checks passed. Optional features may be limited."
-            summary_style = "color: #fab387;"
+            summary_style = "color: #DCA46E;"
         else:
             summary_text = f"All {total} checks passed. TalkTrack is fully configured!"
-            summary_style = "color: #a6e3a1;"
+            summary_style = "color: #62C391;"
 
         summary = QLabel(summary_text)
         summary.setStyleSheet(summary_style)

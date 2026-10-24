@@ -141,7 +141,7 @@ class SourceSelector(QWidget):
         self._capture_warning = QLabel("")
         self._capture_warning.setObjectName("captureWarning")
         self._capture_warning.setStyleSheet(
-            "color: #f9e2af; font-size: 11px; padding: 2px 4px;"
+            "color: #E7BF76; font-size: 11px; padding: 2px 4px;"
         )
         self._capture_warning.setVisible(False)
         content.addWidget(self._capture_warning)
@@ -216,9 +216,9 @@ class SourceSelector(QWidget):
         self.conferencing_warning.setWordWrap(True)
         self.conferencing_warning.setStyleSheet(
             "QLabel#conferencingWarning {"
-            " color: #f9e2af;"
-            " background-color: #313244;"
-            " border: 1px solid #f9e2af;"
+            " color: #E7BF76;"
+            " background-color: #34333E;"
+            " border: 1px solid #E7BF76;"
             " border-radius: 4px;"
             " padding: 6px;"
             " font-size: 9pt;"

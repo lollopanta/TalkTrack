@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
     QPushButton, QLabel, QMenu, QMessageBox, QStackedLayout
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
+from PyQt6.QtCore import QSize
 from PyQt6.QtGui import QAction
 
 from app.ui.search_bar import SearchBar
@@ -207,6 +208,9 @@ class RecordingsList(QWidget):
         stack.setStackingMode(QStackedLayout.StackingMode.StackAll)
         self.list_widget = QListWidget()
         self.list_widget.setMinimumHeight(100)
+        self.list_widget.setWordWrap(True)
+        self.list_widget.setUniformItemSizes(False)
+        self.list_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.list_widget.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
         self.list_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.list_widget.customContextMenuRequested.connect(self._show_context_menu)
@@ -251,7 +255,7 @@ class RecordingsList(QWidget):
             started = metadata.get("started_at", "")
             try:
                 dt = datetime.fromisoformat(started)
-                date_str = dt.strftime("%Y-%m-%d %H:%M")
+                date_str = dt.strftime("%b %d · %H:%M")
             except (ValueError, TypeError):
                 date_str = started
 
@@ -259,13 +263,13 @@ class RecordingsList(QWidget):
             dur_str = self._format_duration(duration)
 
             has_transcript = (Path(metadata["directory"]) / "transcript.json").exists()
-            transcript_indicator = " [T]" if has_transcript else ""
-
-            if name:
-                text = f"{name}  |  {date_str}  |  {dur_str}{transcript_indicator}"
-            else:
-                text = f"{date_str}  |  {dur_str}{transcript_indicator}"
+            display_name = (
+                name or Path(metadata["directory"]).name or "Untitled recording"
+            )
+            transcript_state = "Transcript" if has_transcript else "Audio only"
+            text = f"{display_name}\n{date_str}  ·  {dur_str}  ·  {transcript_state}"
             item = QListWidgetItem(text)
+            item.setSizeHint(QSize(250, 58))
             item.setData(Qt.ItemDataRole.UserRole, metadata)
             self.list_widget.addItem(item)
         self._update_empty_state()

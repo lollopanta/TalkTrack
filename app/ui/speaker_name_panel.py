@@ -7,14 +7,14 @@ from PyQt6.QtCore import Qt, pyqtSignal
 
 # Speaker colors — must match the list in transcript_viewer.py
 SPEAKER_COLORS = [
-    "#89b4fa",  # blue
-    "#a6e3a1",  # green
-    "#fab387",  # peach
-    "#f5c2e7",  # pink
-    "#94e2d5",  # teal
-    "#f9e2af",  # yellow
-    "#cba6f7",  # mauve
-    "#f38ba8",  # red
+    "#B8A7FF",  # blue
+    "#72C4A8",  # jade
+    "#DDAF72",  # ochre
+    "#D98FB0",  # rose
+    "#70B9D3",  # blue
+    "#BF9CE6",  # lilac
+    "#D98A72",  # terracotta
+    "#E47D82",  # coral
 ]
 
 
@@ -56,7 +56,7 @@ class SpeakerNamePanel(QWidget):
         self._toggle_btn.setObjectName("speakerPanelToggle")
         self._toggle_btn.setFlat(True)
         self._toggle_btn.setStyleSheet(
-            "text-align: left; font-weight: bold; color: #89b4fa; "
+            "text-align: left; font-weight: bold; color: #B8A7FF; "
             "font-size: 13px; padding: 4px 0; border: none;"
         )
         self._toggle_btn.clicked.connect(self._toggle_collapsed)
@@ -112,13 +112,13 @@ class SpeakerNamePanel(QWidget):
 
             # Speaker ID label
             id_label = QLabel(speaker_id)
-            id_label.setStyleSheet("color: #a6adc8; font-size: 12px;")
+            id_label.setStyleSheet("color: #A09CA9; font-size: 12px;")
             id_label.setFixedWidth(100)
             row_layout.addWidget(id_label)
 
             # Arrow
             arrow = QLabel("\u2192")
-            arrow.setStyleSheet("color: #585b70;")
+            arrow.setStyleSheet("color: #777381;")
             arrow.setFixedWidth(20)
             row_layout.addWidget(arrow)
 

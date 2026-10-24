@@ -15,14 +15,14 @@ from app.ui.transcript_search_bar import TranscriptSearchBar
 
 # Speaker colors for visual distinction — shared constant
 SPEAKER_COLORS = [
-    "#89b4fa",  # blue
-    "#a6e3a1",  # green
-    "#fab387",  # peach
-    "#f5c2e7",  # pink
-    "#94e2d5",  # teal
-    "#f9e2af",  # yellow
-    "#cba6f7",  # mauve
-    "#f38ba8",  # red
+    "#B8A7FF",  # violet
+    "#72C4A8",  # jade
+    "#DDAF72",  # ochre
+    "#D98FB0",  # rose
+    "#70B9D3",  # blue
+    "#BF9CE6",  # lilac
+    "#D98A72",  # terracotta
+    "#E47D82",  # coral
 ]
 
 
@@ -66,6 +66,7 @@ class TranscriptViewer(QWidget):
         title = QLabel("Transcript")
         title.setObjectName("sectionHeader")
         header.addWidget(title)
+        title.hide()  # The selected tab already provides this heading.
         header.addStretch()
 
         self.transcribe_btn = QPushButton("Transcribe")
@@ -113,13 +114,9 @@ class TranscriptViewer(QWidget):
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.scroll_area.setStyleSheet(
-            "QScrollArea { border: 1px solid #313244; border-radius: 6px; "
-            "background-color: #181825; }"
-        )
-
         self._segments_container = QWidget()
-        self._segments_container.setStyleSheet("background-color: #181825;")
+        self._segments_container.setObjectName("transcriptSegments")
+        self._segments_container.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
         self._segments_layout = QVBoxLayout(self._segments_container)
         self._segments_layout.setContentsMargins(8, 8, 8, 8)
         self._segments_layout.setSpacing(2)
@@ -132,7 +129,7 @@ class TranscriptViewer(QWidget):
         self._placeholder = QLabel(
             "Transcript will appear here after recording and transcription..."
         )
-        self._placeholder.setStyleSheet("color: #585b70; padding: 20px;")
+        self._placeholder.setObjectName("transcriptPlaceholder")
         self._placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._segments_layout.insertWidget(0, self._placeholder)
 
@@ -153,7 +150,6 @@ class TranscriptViewer(QWidget):
             "When checked, clicking a segment's play button\n"
             "will continue playing all segments from that point."
         )
-        self.continue_from_cb.setStyleSheet("color: #a6adc8; font-size: 12px;")
         self.continue_from_cb.toggled.connect(self._on_continue_toggled)
         export_row.addWidget(self.continue_from_cb)
 
@@ -234,6 +230,7 @@ class TranscriptViewer(QWidget):
             self._speaker_colors[speaker] = SPEAKER_COLORS[i % len(SPEAKER_COLORS)]
 
         # Clear existing segment widgets
+        self._placeholder.hide()
         self._segment_widgets.clear()
         while self._segments_layout.count():
             item = self._segments_layout.takeAt(0)
@@ -244,7 +241,7 @@ class TranscriptViewer(QWidget):
         from app.ui.segment_widget import SegmentWidget
 
         for i, seg in enumerate(transcript.segments):
-            color = self._speaker_colors.get(seg.speaker, "#cdd6f4")
+            color = self._speaker_colors.get(seg.speaker, "#F1EFF6")
             name = self._speaker_names.get(seg.speaker, "")
 
             widget = SegmentWidget(
@@ -295,7 +292,7 @@ class TranscriptViewer(QWidget):
         self._placeholder = QLabel(
             "Transcript will appear here after recording and transcription..."
         )
-        self._placeholder.setStyleSheet("color: #585b70; padding: 20px;")
+        self._placeholder.setObjectName("transcriptPlaceholder")
         self._placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._segments_layout.addWidget(self._placeholder)
         self._segments_layout.addStretch()
@@ -386,7 +383,7 @@ class TranscriptViewer(QWidget):
         """Highlight the currently playing segment."""
         if 0 <= index < len(self._segment_widgets):
             self._segment_widgets[index].setStyleSheet(
-                "background-color: #313244; border-radius: 4px;"
+                "background-color: #34333E; border-radius: 4px;"
             )
 
     def _clear_highlight(self):

@@ -82,7 +82,7 @@ class DiarizationSetupWizard(QDialog):
             "It requires a free HuggingFace account. Follow these steps:"
         )
         intro.setWordWrap(True)
-        intro.setStyleSheet("color: #a6adc8; margin-bottom: 8px;")
+        intro.setStyleSheet("color: #A09CA9; margin-bottom: 8px;")
         layout.addWidget(intro)
 
         # Step 1: Create account

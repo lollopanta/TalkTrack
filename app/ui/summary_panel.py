@@ -19,13 +19,13 @@ class SummaryPanel(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         self._status = QLabel("No summary generated yet.")
-        self._status.setStyleSheet("color: #a6adc8; padding: 8px;")
+        self._status.setStyleSheet("color: #A09CA9; padding: 8px;")
         layout.addWidget(self._status)
 
         self._text = QTextEdit()
         self._text.setReadOnly(False)
         self._text.setStyleSheet(
-            "QTextEdit { background-color: #1e1e2e; color: #cdd6f4; "
+            "QTextEdit { background-color: #14141B; color: #F1EFF6; "
             "border: none; padding: 8px; font-size: 13px; }"
         )
         self._text.setVisible(False)
@@ -37,8 +37,8 @@ class SummaryPanel(QWidget):
             "Optional: instructions for regeneration (e.g. \"use John instead of SPEAKER_00\")"
         )
         self._instruction_input.setStyleSheet(
-            "QLineEdit { background-color: #1e1e2e; color: #cdd6f4; "
-            "border: 1px solid #313244; border-radius: 4px; padding: 4px 8px; }"
+            "QLineEdit { background-color: #14141B; color: #F1EFF6; "
+            "border: 1px solid #34333E; border-radius: 4px; padding: 4px 8px; }"
         )
         self._instruction_input.setVisible(False)
         layout.addWidget(self._instruction_input)

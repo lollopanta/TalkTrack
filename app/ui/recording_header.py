@@ -43,16 +43,13 @@ class RecordingHeader(QWidget):
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 8, 8, 4)
+        layout.setContentsMargins(0, 2, 0, 6)
 
         # Top row: name + rename button
         top_row = QHBoxLayout()
 
         self.name_label = QLabel("")
         self.name_label.setObjectName("recordingName")
-        self.name_label.setStyleSheet(
-            "font-size: 16px; font-weight: bold; color: #cdd6f4;"
-        )
         top_row.addWidget(self.name_label)
 
         self.name_edit = QLineEdit()
@@ -74,7 +71,6 @@ class RecordingHeader(QWidget):
         # Bottom row: date, duration, speaker count
         self.info_label = QLabel("")
         self.info_label.setObjectName("recordingInfo")
-        self.info_label.setStyleSheet("color: #a6adc8; font-size: 12px;")
         layout.addWidget(self.info_label)
 
     def set_recording(self, metadata, speaker_count=0):

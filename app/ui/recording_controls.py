@@ -165,14 +165,8 @@ class RecordingControls(QWidget):
     def _update_test_mic_style(self, checked):
         if checked:
             self.test_mic_btn.setText("Testing mic…")
-            self.test_mic_btn.setStyleSheet(
-                "QPushButton#testMicButton { "
-                "background-color: #a6e3a1; color: #1e1e2e; "
-                "border: 1px solid #a6e3a1; font-weight: bold; }"
-            )
         else:
             self.test_mic_btn.setText("Test microphone")
-            self.test_mic_btn.setStyleSheet("")
         if getattr(self, "_state", RecordingState.IDLE) == RecordingState.IDLE:
             self.state_label.setText("Testing microphone" if checked else "Ready")
 
@@ -190,18 +184,15 @@ class RecordingControls(QWidget):
     def set_muted(self, muted):
         """Update the mute button visual state."""
         self._muted = bool(muted)
+        self.mute_btn.setProperty("muted", self._muted)
         if self._muted:
             self.mute_btn.setText("Unmute mic")
             self.mute_btn.setAccessibleName("Unmute microphone")
-            self.mute_btn.setStyleSheet(
-                "QPushButton#muteButton { "
-                "background-color: #f38ba8; color: #1e1e2e; "
-                "border: 1px solid #f38ba8; font-weight: bold; }"
-            )
         else:
             self.mute_btn.setText("Mute mic")
             self.mute_btn.setAccessibleName("Mute microphone")
-            self.mute_btn.setStyleSheet("")
+        self.mute_btn.style().unpolish(self.mute_btn)
+        self.mute_btn.style().polish(self.mute_btn)
 
     def _toggle_indicator(self):
         self._blink_state = not self._blink_state

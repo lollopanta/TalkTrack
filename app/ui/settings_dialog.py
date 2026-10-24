@@ -1,14 +1,30 @@
 from PyQt6.QtWidgets import (
     QApplication, QDialog, QVBoxLayout, QHBoxLayout, QTabWidget, QWidget,
     QLabel, QComboBox, QSpinBox, QCheckBox, QLineEdit, QListWidget,
-    QPushButton, QFileDialog, QGroupBox, QFormLayout, QMessageBox
+    QPushButton, QFileDialog, QGroupBox, QFormLayout, QMessageBox,
+    QProgressBar, QScrollArea, QFrame,
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 from app.utils.platform_info import is_macos, is_windows_11
+from app.utils.dependency_checker import whisper_cache_dir
+
+_LANGUAGE_NAMES = {
+    "ar": "Arabic", "bn": "Bengali", "bg": "Bulgarian", "ca": "Catalan",
+    "zh": "Chinese", "hr": "Croatian", "cs": "Czech", "da": "Danish",
+    "nl": "Dutch", "en": "English", "fi": "Finnish", "fr": "French",
+    "de": "German", "el": "Greek", "he": "Hebrew", "hi": "Hindi",
+    "hu": "Hungarian", "id": "Indonesian", "it": "Italian", "ja": "Japanese",
+    "ko": "Korean", "ms": "Malay", "no": "Norwegian", "pl": "Polish",
+    "pt": "Portuguese", "ro": "Romanian", "ru": "Russian", "es": "Spanish",
+    "sv": "Swedish", "th": "Thai", "tr": "Turkish", "uk": "Ukrainian",
+    "ur": "Urdu", "vi": "Vietnamese",
+}
 
 
 class SettingsDialog(QDialog):
     """Settings dialog for configuring recording and transcription options."""
+
+    model_download_requested = pyqtSignal(str)
 
     def __init__(self, config, parent=None):
         super().__init__(parent)
@@ -152,7 +168,7 @@ class SettingsDialog(QDialog):
             "Matching devices won't appear in the mic or system audio dropdowns."
         )
         hidden_help.setWordWrap(True)
-        hidden_help.setStyleSheet("color: #a6adc8; font-size: 12px;")
+        hidden_help.setStyleSheet("color: #A09CA9; font-size: 12px;")
         hidden_layout.addWidget(hidden_help)
 
         self.hidden_devices_list = QListWidget()
@@ -210,18 +226,45 @@ class SettingsDialog(QDialog):
         # Transcription Tab
         transcription_tab = QWidget()
         transcription_layout = QVBoxLayout(transcription_tab)
+        transcription_layout.setContentsMargins(8, 8, 8, 8)
 
         whisper_group = QGroupBox("Whisper Transcription")
         whisper_form = QFormLayout(whisper_group)
+        whisper_form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
+        whisper_form.setHorizontalSpacing(12)
+        whisper_form.setVerticalSpacing(8)
 
         self.model_combo = QComboBox()
+        self.model_combo.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.model_combo.setMinimumContentsLength(22)
         self.model_combo.addItem("tiny (fastest, least accurate)", "tiny")
         self.model_combo.addItem("base (fast, good accuracy)", "base")
         self.model_combo.addItem("small (balanced)", "small")
         self.model_combo.addItem("medium (slower, better accuracy)", "medium")
         self.model_combo.addItem("large-v3 (slowest, best accuracy)", "large-v3")
         self.model_combo.addItem("large-v3-turbo (near large-v3 accuracy, much faster)", "large-v3-turbo")
-        whisper_form.addRow("Model Size:", self.model_combo)
+        model_row = QHBoxLayout()
+        model_row.addWidget(self.model_combo, 1)
+        self.download_model_btn = QPushButton("Download model")
+        self.download_model_btn.clicked.connect(
+            lambda: self.model_download_requested.emit(self.model_combo.currentData())
+        )
+        model_row.addWidget(self.download_model_btn)
+        whisper_form.addRow("Model Size:", model_row)
+
+        self.model_download_status = QLabel()
+        self.model_download_status.setWordWrap(True)
+        whisper_form.addRow("", self.model_download_status)
+
+        self.model_download_progress = QProgressBar()
+        self.model_download_progress.setRange(0, 0)
+        self.model_download_progress.setTextVisible(False)
+        self.model_download_progress.setMaximumHeight(10)
+        self.model_download_progress.hide()
+        whisper_form.addRow("", self.model_download_progress)
+        self.model_combo.currentIndexChanged.connect(self._update_model_download_status)
 
         self.device_combo = QComboBox()
         self.device_combo.addItem("CPU", "cpu")
@@ -240,9 +283,32 @@ class SettingsDialog(QDialog):
         self.gpu_status_label.setVisible(False)
         whisper_form.addRow("", self.gpu_status_label)
 
-        self.language_edit = QLineEdit()
-        self.language_edit.setPlaceholderText("auto-detect (leave empty)")
-        whisper_form.addRow("Language:", self.language_edit)
+        self.language_combo = QComboBox()
+        self.language_combo.setEditable(True)
+        self.language_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.language_combo.setMaxVisibleItems(14)
+        self.language_combo.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.language_combo.setMinimumContentsLength(18)
+        self.language_combo.setToolTip(
+            "Choose the language spoken in the audio. This helps Whisper recognize it. "
+            "Leave it on Auto-detect if you are unsure."
+        )
+        self.language_combo.addItem("Auto-detect", None)
+        try:
+            from faster_whisper.tokenizer import _LANGUAGE_CODES
+        except ImportError:
+            _LANGUAGE_CODES = tuple(_LANGUAGE_NAMES)
+        self._whisper_language_codes = set(_LANGUAGE_CODES)
+        for code in sorted(_LANGUAGE_CODES, key=lambda item: _LANGUAGE_NAMES.get(item, item).casefold()):
+            name = _LANGUAGE_NAMES.get(code, code.upper())
+            self.language_combo.addItem(f"{name} ({code})", code)
+        self.language_combo.setCurrentIndex(0)
+        self.language_combo.lineEdit().setPlaceholderText(
+            "Auto-detect or type a code, e.g. it"
+        )
+        whisper_form.addRow("Audio language:", self.language_combo)
 
         self.min_duration_spin = QSpinBox()
         self.min_duration_spin.setRange(0, 300)
@@ -270,6 +336,9 @@ class SettingsDialog(QDialog):
         # Diarization group
         diarization_group = QGroupBox("Speaker Diarization")
         diarization_form = QFormLayout(diarization_group)
+        diarization_form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
+        diarization_form.setHorizontalSpacing(12)
+        diarization_form.setVerticalSpacing(8)
 
         self.diarization_enabled = QCheckBox("Enable speaker diarization")
         diarization_form.addRow(self.diarization_enabled)
@@ -281,9 +350,9 @@ class SettingsDialog(QDialog):
 
         token_help = QLabel(
             '<a href="https://huggingface.co/settings/tokens" '
-            'style="color: #89b4fa;">Get token</a> | '
+            'style="color: #B8A7FF;">Get token</a> | '
             '<a href="https://huggingface.co/pyannote/speaker-diarization-community-1" '
-            'style="color: #89b4fa;">Accept model terms</a>'
+            'style="color: #B8A7FF;">Accept model terms</a>'
         )
         token_help.setOpenExternalLinks(True)
         diarization_form.addRow("", token_help)
@@ -306,7 +375,18 @@ class SettingsDialog(QDialog):
         transcription_layout.addWidget(diarization_group)
         transcription_layout.addStretch()
 
-        tabs.addTab(transcription_tab, "Transcription")
+        transcription_scroll = QScrollArea()
+        transcription_scroll.setObjectName("transcriptionSettingsScroll")
+        transcription_scroll.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
+        transcription_scroll.setWidgetResizable(True)
+        transcription_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        transcription_scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        transcription_tab.setObjectName("transcriptionSettingsContent")
+        transcription_tab.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
+        transcription_scroll.setWidget(transcription_tab)
+        tabs.addTab(transcription_scroll, "Transcription")
 
         # AI Assistant Tab
         ai_tab = QWidget()
@@ -389,6 +469,39 @@ class SettingsDialog(QDialog):
 
         layout.addLayout(btn_row)
 
+    def _update_model_download_status(self, *_):
+        model_size = self.model_combo.currentData()
+        self.model_combo.setEnabled(True)
+        self.model_download_progress.hide()
+        snapshots = whisper_cache_dir(model_size) / "snapshots"
+        downloaded = snapshots.exists() and any(
+            (snapshot / "model.bin").is_file()
+            for snapshot in snapshots.iterdir()
+        )
+        if downloaded:
+            self.model_download_status.setText("This model is ready on this computer.")
+            self.download_model_btn.setText("Model downloaded")
+            self.download_model_btn.setEnabled(False)
+        else:
+            self.model_download_status.setText(
+                "Download it now, or TalkTrack will download it the first time you transcribe."
+            )
+            self.download_model_btn.setText("Download model")
+            self.download_model_btn.setEnabled(True)
+
+    def set_model_download_state(self, model_size, message, running=False, ready=False):
+        """Reflect download progress while this settings window is open."""
+        if self.model_combo.currentData() != model_size:
+            return
+        self.model_download_status.setText(message)
+        self.model_download_progress.setVisible(running)
+        self.model_combo.setEnabled(not running)
+        self.download_model_btn.setEnabled(not running and not ready)
+        if ready:
+            self.download_model_btn.setText("Model downloaded")
+        elif not running:
+            self.download_model_btn.setText("Download model")
+
     def _load_settings(self):
         # General
         min_rec = self.config.get("general", "min_recording_length")
@@ -437,6 +550,7 @@ class SettingsDialog(QDialog):
         idx = self.model_combo.findData(model)
         if idx >= 0:
             self.model_combo.setCurrentIndex(idx)
+        self._update_model_download_status()
 
         device = self.config.get("transcription", "device")
         if device == "cuda" and is_macos():
@@ -447,7 +561,18 @@ class SettingsDialog(QDialog):
 
         lang = self.config.get("transcription", "language")
         if lang:
-            self.language_edit.setText(lang)
+            language_code = str(lang).strip().lower()
+            if language_code not in self._whisper_language_codes:
+                language_code = next(
+                    (code for code, name in _LANGUAGE_NAMES.items()
+                     if name.casefold() == str(lang).strip().casefold()),
+                    language_code,
+                )
+            idx = self.language_combo.findData(language_code)
+            if idx >= 0:
+                self.language_combo.setCurrentIndex(idx)
+            else:
+                self.language_combo.setEditText(str(lang))
 
         self._on_device_changed(self.device_combo.currentIndex())
 
@@ -512,8 +637,23 @@ class SettingsDialog(QDialog):
         self.config.set("transcription", "model_size", self.model_combo.currentData())
         self.config.set("transcription", "device", self.device_combo.currentData())
 
-        lang = self.language_edit.text().strip()
-        self.config.set("transcription", "language", lang if lang else None)
+        lang = self.language_combo.currentData()
+        if lang is None:
+            entered_language = self.language_combo.currentText().strip().casefold()
+            if entered_language and entered_language != "auto-detect":
+                language_names = {
+                    name.casefold(): code for code, name in _LANGUAGE_NAMES.items()
+                }
+                lang = language_names.get(entered_language, entered_language)
+                if lang not in self._whisper_language_codes:
+                    QMessageBox.warning(
+                        self,
+                        "Unsupported language",
+                        "Choose a language from the list or enter a supported Whisper "
+                        "language code, such as 'it' for Italian.",
+                    )
+                    return
+        self.config.set("transcription", "language", lang)
         self.config.set("transcription", "min_duration", self.min_duration_spin.value())
         self.config.set("transcription", "batch_size", self.batch_size_spin.value())
 
@@ -633,11 +773,11 @@ class SettingsDialog(QDialog):
         if self.ai_api_key.text():
             masked = self.ai_api_key.text()[:4] + "..." + self.ai_api_key.text()[-4:]
             self.ai_key_status.setText(
-                f'<span style="color: #a6e3a1;">API key configured ({masked})</span>'
+                f'<span style="color: #62C391;">API key configured ({masked})</span>'
             )
         else:
             self.ai_key_status.setText(
-                '<span style="color: #fab387;">No API key set</span>'
+                '<span style="color: #DCA46E;">No API key set</span>'
             )
         self.ai_key_status.setVisible(True)
 
@@ -652,13 +792,13 @@ class SettingsDialog(QDialog):
 
         if info["torch_has_cuda"]:
             self.gpu_status_label.setText(
-                f'<span style="color: #a6e3a1;">&#x2705; {info["gpu_name"]} ready '
+                f'<span style="color: #62C391;">&#x2705; {info["gpu_name"]} ready '
                 f'(CUDA {info["cuda_version"]})</span>'
             )
             self.gpu_status_label.setVisible(True)
         elif info["has_nvidia_gpu"]:
             self.gpu_status_label.setText(
-                f'<span style="color: #fab387;">&#x26a0;&#xfe0f; {info["gpu_name"]} detected but '
+                f'<span style="color: #DCA46E;">&#x26a0;&#xfe0f; {info["gpu_name"]} detected but '
                 f'PyTorch is CPU-only.<br>'
                 f'To enable GPU acceleration, run in your terminal:<br>'
                 f'<code>pip install torch torchaudio --index-url '
@@ -668,7 +808,7 @@ class SettingsDialog(QDialog):
             self.gpu_status_label.setVisible(True)
         else:
             self.gpu_status_label.setText(
-                '<span style="color: #f38ba8;">&#x274c; No NVIDIA GPU detected. '
+                '<span style="color: #E44747;">&#x274c; No NVIDIA GPU detected. '
                 'CUDA requires an NVIDIA graphics card.</span>'
             )
             self.gpu_status_label.setVisible(True)
@@ -688,11 +828,11 @@ class SettingsDialog(QDialog):
         pip_package, display_name = info
         if is_package_installed(provider):
             self.ai_package_label.setText(
-                f'<span style="color: #a6e3a1;">{display_name} is installed.</span>'
+                f'<span style="color: #62C391;">{display_name} is installed.</span>'
             )
         else:
             self.ai_package_label.setText(
-                f'<span style="color: #fab387;">{display_name} is not installed. '
+                f'<span style="color: #DCA46E;">{display_name} is not installed. '
                 f'It will be installed automatically when you test the connection or save.</span>'
             )
         self.ai_package_label.setVisible(True)
@@ -720,7 +860,7 @@ class SettingsDialog(QDialog):
             return False
 
         self.ai_package_label.setText(
-            f'<span style="color: #89b4fa;">Installing {display_name}...</span>'
+            f'<span style="color: #B8A7FF;">Installing {display_name}...</span>'
         )
         self.ai_package_label.setVisible(True)
         QApplication.processEvents()
@@ -728,7 +868,7 @@ class SettingsDialog(QDialog):
         success, output = install_package(pip_package)
         if success:
             self.ai_package_label.setText(
-                f'<span style="color: #a6e3a1;">{display_name} installed successfully.</span>'
+                f'<span style="color: #62C391;">{display_name} installed successfully.</span>'
             )
             return True
         else:
@@ -737,7 +877,7 @@ class SettingsDialog(QDialog):
                 f"Failed to install {pip_package}:\n\n{output[:500]}"
             )
             self.ai_package_label.setText(
-                f'<span style="color: #f38ba8;">Installation failed.</span>'
+                f'<span style="color: #E44747;">Installation failed.</span>'
             )
             return False
 

@@ -6,7 +6,7 @@ from PyQt6.QtCore import Qt, pyqtSignal, QSize, QPointF
 from PyQt6.QtGui import QAction, QIcon, QPixmap, QPainter, QColor, QPolygonF
 
 
-def _make_play_icon(size=20, color="#a6e3a1"):
+def _make_play_icon(size=20, color="#62C391"):
     """Draw a filled triangle (play) icon."""
     pixmap = QPixmap(size, size)
     pixmap.fill(QColor(0, 0, 0, 0))
@@ -25,7 +25,7 @@ def _make_play_icon(size=20, color="#a6e3a1"):
     return QIcon(pixmap)
 
 
-def _make_stop_icon(size=20, color="#f38ba8"):
+def _make_stop_icon(size=20, color="#E44747"):
     """Draw a filled square (stop) icon."""
     pixmap = QPixmap(size, size)
     pixmap.fill(QColor(0, 0, 0, 0))
@@ -60,14 +60,14 @@ def _get_stop_icon():
 
 # Speaker colors — must match transcript_viewer.py and speaker_name_panel.py
 SPEAKER_COLORS = [
-    "#89b4fa",  # blue
-    "#a6e3a1",  # green
-    "#fab387",  # peach
-    "#f5c2e7",  # pink
-    "#94e2d5",  # teal
-    "#f9e2af",  # yellow
-    "#cba6f7",  # mauve
-    "#f38ba8",  # red
+    "#B8A7FF",  # violet
+    "#72C4A8",  # jade
+    "#DDAF72",  # ochre
+    "#D98FB0",  # rose
+    "#70B9D3",  # blue
+    "#BF9CE6",  # lilac
+    "#D98A72",  # terracotta
+    "#E47D82",  # coral
 ]
 
 
@@ -146,7 +146,7 @@ class SegmentWidget(QWidget):
     text_reverted = pyqtSignal(int)        # segment index
     speaker_clicked = pyqtSignal(str)      # speaker ID
 
-    def __init__(self, index, segment, speaker_color="#cdd6f4",
+    def __init__(self, index, segment, speaker_color="#F1EFF6",
                  speaker_name="", parent=None):
         super().__init__(parent)
         self._index = index
@@ -178,7 +178,7 @@ class SegmentWidget(QWidget):
         end_ts = _format_time(self._segment.end)
         self.timestamp_label = QLabel(f"[{start_ts} \u2192 {end_ts}]")
         self.timestamp_label.setStyleSheet(
-            "color: #6c7086; font-family: Consolas; font-size: 11px;"
+            "color: #8A8795; font-family: Consolas; font-size: 11px;"
         )
         self.timestamp_label.setFixedWidth(160)
         layout.addWidget(self.timestamp_label)
@@ -199,7 +199,7 @@ class SegmentWidget(QWidget):
 
         # Text label (normal mode)
         self.text_label = QLabel(self._segment.text)
-        self.text_label.setStyleSheet("color: #cdd6f4; font-size: 13px;")
+        self.text_label.setStyleSheet("color: #F1EFF6; font-size: 13px;")
         self.text_label.setWordWrap(True)
         self.text_label.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
         self.text_label.mouseDoubleClickEvent = self._on_text_double_clicked
@@ -215,7 +215,7 @@ class SegmentWidget(QWidget):
 
         # Edit indicator
         self.edit_indicator = QLabel("\u270e")  # pencil icon
-        self.edit_indicator.setStyleSheet("color: #f9e2af; font-size: 12px;")
+        self.edit_indicator.setStyleSheet("color: #E7BF76; font-size: 12px;")
         self.edit_indicator.setFixedWidth(16)
         self.edit_indicator.setToolTip("This segment has been edited")
         self.edit_indicator.setVisible(bool(self._segment.original_text))
@@ -234,19 +234,19 @@ class SegmentWidget(QWidget):
     def _apply_play_style(self):
         self.play_btn.setStyleSheet(
             "QPushButton#segmentPlayBtn { border-radius: 13px; "
-            "background-color: #1e6650; "
-            "border: 1px solid #2d9b75; padding: 0; "
+            "background-color: #2E5D4C; "
+            "border: 1px solid #3A9979; padding: 0; "
             "min-height: 0; min-width: 0; max-height: 26px; max-width: 26px; }"
-            "QPushButton#segmentPlayBtn:hover { background-color: #2d9b75; }"
+            "QPushButton#segmentPlayBtn:hover { background-color: #3A9979; }"
         )
 
     def _apply_stop_style(self):
         self.play_btn.setStyleSheet(
             "QPushButton#segmentPlayBtn { border-radius: 13px; "
-            "background-color: #7d2a2a; "
-            "border: 1px solid #b34d4d; padding: 0; "
+            "background-color: #712E34; "
+            "border: 1px solid #9E4750; padding: 0; "
             "min-height: 0; min-width: 0; max-height: 26px; max-width: 26px; }"
-            "QPushButton#segmentPlayBtn:hover { background-color: #b34d4d; }"
+            "QPushButton#segmentPlayBtn:hover { background-color: #9E4750; }"
         )
 
     def set_playing(self, playing):
@@ -350,7 +350,7 @@ class SegmentWidget(QWidget):
 
     def highlight_match(self, start, end):
         """Briefly flash the segment to show the match."""
-        self.setStyleSheet("background-color: #45475a;")
+        self.setStyleSheet("background-color: #41404B;")
         from PyQt6.QtCore import QTimer
         QTimer.singleShot(1500, lambda: self.setStyleSheet(""))
 

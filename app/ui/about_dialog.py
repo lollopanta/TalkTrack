@@ -33,12 +33,12 @@ class AboutDialog(QDialog):
         layout.addWidget(logo)
 
         title = QLabel("TalkTrack")
-        title.setStyleSheet("font-size: 24px; font-weight: bold; color: #cdd6f4;")
+        title.setStyleSheet("font-size: 24px; font-weight: bold; color: #F1EFF6;")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
 
         version = QLabel(f"Version {VERSION}")
-        version.setStyleSheet("font-size: 13px; color: #a6adc8;")
+        version.setStyleSheet("font-size: 13px; color: #A09CA9;")
         version.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(version)
 
@@ -46,7 +46,7 @@ class AboutDialog(QDialog):
             "AI-powered call recording, transcription, and speaker\n"
             "diarization for Windows and macOS. Free and open source."
         )
-        desc.setStyleSheet("font-size: 12px; color: #bac2de;")
+        desc.setStyleSheet("font-size: 12px; color: #D8D4DF;")
         desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
         desc.setWordWrap(True)
         layout.addWidget(desc)
@@ -56,7 +56,7 @@ class AboutDialog(QDialog):
         bmac_btn = QPushButton("Buy Me a Coffee")
         bmac_btn.setStyleSheet(
             "QPushButton {"
-            "  background-color: #f9e2af; color: #1e1e2e; font-weight: bold;"
+            "  background-color: #E7BF76; color: #14141B; font-weight: bold;"
             "  padding: 10px 20px; border-radius: 6px; font-size: 14px;"
             "}"
             "QPushButton:hover {"

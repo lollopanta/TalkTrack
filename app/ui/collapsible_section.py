@@ -18,12 +18,11 @@ class CollapsibleSection(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # Header frame: distinct background so the section title reads as a
-        # band. Extras (Refresh, etc.) can be added via add_header_widget().
+        # Header stays quiet so collapsible sections read as navigation rows.
         self._header_frame = QFrame()
         self._header_frame.setObjectName("collapsibleHeader")
         self._header_row = QHBoxLayout(self._header_frame)
-        self._header_row.setContentsMargins(6, 2, 6, 2)
+        self._header_row.setContentsMargins(0, 0, 0, 0)
         self._header_row.setSpacing(4)
 
         self._toggle_btn = QToolButton()
@@ -33,12 +32,6 @@ class CollapsibleSection(QWidget):
         self._toggle_btn.setChecked(False)
         self._toggle_btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
         self._toggle_btn.toggled.connect(self._on_toggled)
-        self._toggle_btn.setStyleSheet(
-            "QToolButton { border: none; background: transparent; "
-            "color: #89b4fa; font-weight: bold; "
-            "text-align: left; padding: 4px 0; }"
-            "QToolButton:hover { color: #b4befe; }"
-        )
         self._header_row.addWidget(self._toggle_btn)
         self._header_row.addStretch()
         layout.addWidget(self._header_frame)

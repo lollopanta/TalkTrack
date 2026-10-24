@@ -115,10 +115,10 @@ class WaveformDisplay(QWidget):
         mid_y = y + h / 2
 
         # Background
-        painter.fillRect(int(x), int(y), int(w), int(h), QColor("#1e1e2e"))
+        painter.fillRect(int(x), int(y), int(w), int(h), QColor("#14141B"))
 
         # Center line
-        painter.setPen(QPen(QColor("#45475a"), 1))
+        painter.setPen(QPen(QColor("#41404B"), 1))
         painter.drawLine(int(x), int(mid_y), int(x + w), int(mid_y))
 
         points = downsample_for_display(data, self._display_points)
@@ -152,8 +152,8 @@ class WaveformDisplay(QWidget):
         mic_data = self._mic_buffer.get_data()
         sys_data = self._sys_buffer.get_data()
 
-        mic_color = "#89b4fa"  # Blue
-        sys_color = "#a6e3a1"  # Green
+        mic_color = "#B8A7FF"  # Blue
+        sys_color = "#62C391"  # Green
 
         # Draw mic waveform (top half)
         self._draw_waveform(
@@ -174,7 +174,7 @@ class WaveformDisplay(QWidget):
             overlay_font.setPixelSize(14)
             overlay_font.setBold(True)
             painter.setFont(overlay_font)
-            painter.setPen(QColor("#f38ba8"))
+            painter.setPen(QColor("#E44747"))
             painter.drawText(
                 overlay_x, overlay_y, overlay_w, overlay_h,
                 Qt.AlignmentFlag.AlignCenter,
@@ -188,7 +188,7 @@ class WaveformDisplay(QWidget):
         )
 
         # Labels
-        painter.fillRect(0, 0, label_w, h, QColor("#1e1e2e"))
+        painter.fillRect(0, 0, label_w, h, QColor("#14141B"))
         font = QFont()
         font.setPixelSize(9)
         painter.setFont(font)
@@ -202,7 +202,7 @@ class WaveformDisplay(QWidget):
                          Qt.AlignmentFlag.AlignCenter, "Sys")
 
         # Divider line between the two
-        painter.setPen(QPen(QColor("#585b70"), 1))
+        painter.setPen(QPen(QColor("#777381"), 1))
         painter.drawLine(label_w, int(half_h), w, int(half_h))
 
         painter.end()

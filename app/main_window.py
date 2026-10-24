@@ -11,10 +11,11 @@ logger = logging.getLogger(__name__)
 
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QSplitter,
-    QTabWidget, QMenuBar, QStatusBar, QMessageBox, QLabel
+    QTabWidget, QStatusBar, QMessageBox, QLabel, QFrame, QPushButton,
+    QFileDialog,
 )
 from PyQt6.QtCore import Qt, QTimer, QEvent
-from PyQt6.QtGui import QAction
+from PyQt6.QtGui import QAction, QPixmap
 
 from app.utils.atomic_io import atomic_write_json, atomic_write_text
 from app.utils.config import Config
@@ -27,6 +28,8 @@ else:
     ProcessAudioCapture = None
 from app.recording.mic_monitor import MicMonitor
 from app.recording.recorder import Recorder, RecordingState
+from app.recording.audio_import import AudioImportWorker
+from app.transcription.model_downloader import WhisperModelDownloadWorker
 from app.transcription.transcriber import TranscriptionWorker, TranscriptResult
 from app.transcription.diarizer import DiarizationWorker, SimpleDiarizeWorker
 from app.ui.recording_controls import RecordingControls
@@ -57,6 +60,9 @@ class MainWindow(QMainWindow):
         self._transcription_worker = None
         self._diarization_worker = None
         self._simple_diarize_worker = None
+        self._audio_import_worker = None
+        self._model_download_worker = None
+        self._settings_dialog = None
         self._summarize_worker = None
         self._pending_transcriptions = []
         self._closing = False
@@ -76,8 +82,8 @@ class MainWindow(QMainWindow):
         self._auto_record_timer.setSingleShot(True)
         self._auto_record_timer.timeout.connect(self._on_auto_record_timer_fired)
 
-        self.setWindowTitle("TalkTrack - Call Recorder, Transcriber & AI Summarizer")
-        self.setMinimumSize(900, 620)
+        self.setWindowTitle("TalkTrack — Studio")
+        self.setMinimumSize(1000, 620)
         self.resize(1260, 800)
 
         self._setup_menu()
@@ -169,31 +175,85 @@ class MainWindow(QMainWindow):
 
     def _setup_ui(self):
         central = QWidget()
+        central.setObjectName("appRoot")
+        central.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
         self.setCentralWidget(central)
         main_layout = QHBoxLayout(central)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
 
-        # Main splitter: left (controls) | right (tabs)
+        # The sidebar owns capture and library tasks; the workspace is reserved
+        # for the selected recording and its transcript tools.
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.setChildrenCollapsible(False)
-        splitter.setHandleWidth(6)
+        splitter.setHandleWidth(1)
 
-        # Left panel: controls at top, sources collapsible, recordings below
-        left_panel = QWidget()
-        left_panel.setObjectName("leftPanel")
+        left_panel = QFrame()
+        left_panel.setObjectName("sidebar")
         left_panel.setMinimumWidth(320)
-        left_panel.setMaximumWidth(460)
+        left_panel.setMaximumWidth(370)
         left_layout = QVBoxLayout(left_panel)
-        left_layout.setContentsMargins(8, 8, 8, 8)
+        left_layout.setContentsMargins(18, 16, 16, 16)
+        left_layout.setSpacing(14)
 
-        # Recording controls (buttons row + timer/meters row)
+        # Compact identity header, kept separate from the capture controls.
+        brand_row = QHBoxLayout()
+        brand_row.setContentsMargins(0, 0, 0, 2)
+        brand_row.setSpacing(10)
+        brand_icon = QLabel()
+        brand_icon.setObjectName("brandIcon")
+        brand_icon.setPixmap(
+            QPixmap(str(Path(__file__).parent.parent / "resources" / "TT_icon_64x64.png"))
+            .scaled(34, 34, Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation)
+        )
+        brand_row.addWidget(brand_icon)
+        brand_copy = QVBoxLayout()
+        brand_copy.setSpacing(0)
+        brand_name = QLabel("TalkTrack")
+        brand_name.setObjectName("brandName")
+        brand_tag = QLabel("CALL STUDIO")
+        brand_tag.setObjectName("brandTag")
+        brand_copy.addWidget(brand_name)
+        brand_copy.addWidget(brand_tag)
+        brand_row.addLayout(brand_copy)
+        brand_row.addStretch()
+        left_layout.addLayout(brand_row)
+
+        # Capture surface groups the primary action, levels, and live waveform.
+        capture_card = QFrame()
+        capture_card.setObjectName("captureCard")
+        capture_layout = QVBoxLayout(capture_card)
+        capture_layout.setContentsMargins(14, 12, 14, 12)
+        capture_layout.setSpacing(8)
+
+        capture_heading = QHBoxLayout()
+        capture_title = QLabel("Capture")
+        capture_title.setObjectName("cardTitle")
+        capture_heading.addWidget(capture_title)
+        capture_heading.addStretch()
+        local_badge = QLabel("LOCAL")
+        local_badge.setObjectName("localBadge")
+        local_badge.setToolTip("Audio is recorded on this device.")
+        capture_heading.addWidget(local_badge)
+        capture_layout.addLayout(capture_heading)
+
         self.recording_controls = RecordingControls()
-        left_layout.addWidget(self.recording_controls)
+        self.recording_controls.setObjectName("recordingControls")
+        capture_layout.addWidget(self.recording_controls)
+
+        self.import_audio_btn = QPushButton("Import audio file")
+        self.import_audio_btn.setObjectName("importAudioButton")
+        self.import_audio_btn.setToolTip(
+            "Import an audio file, transcribe it, and identify its speakers."
+        )
+        capture_layout.addWidget(self.import_audio_btn)
 
         self.meters_panel = MetersPanel()
         self.meters_panel.setObjectName("metersPanel")
         self.meters_panel.set_gain(self.config.get("audio", "mic_gain"))
         self.meters_panel.gain_changed.connect(self._on_gain_changed)
-        left_layout.addWidget(self.meters_panel)
+        capture_layout.addWidget(self.meters_panel)
 
         # Idle-time level monitors. Off by default every launch — user
         # enables them via the Test Mic button in recording_controls.
@@ -218,16 +278,20 @@ class MainWindow(QMainWindow):
             seconds=5,
             sample_rate=self.config.get("audio", "sample_rate"),
         )
-        left_layout.addWidget(self.waveform)
+        self.waveform.setObjectName("waveformDisplay")
+        capture_layout.addWidget(self.waveform)
+        left_layout.addWidget(capture_card)
 
-        # Audio sources (collapsible). Stretch is toggled dynamically below.
+        # Device choices stay one click away while the library gets the space
+        # it needs. The collapsed header includes the current source summary.
         self.source_selector = SourceSelector(config=self.config)
+        self.source_selector._section.set_expanded(False)
         left_layout.addWidget(self.source_selector)
 
-        # Recordings list wrapped in a CollapsibleSection
+        # Recordings remain visible in the sidebar for fast switching.
         recordings_dir = self.config.get("output", "directory")
         self.recordings_list = RecordingsList(recordings_dir)
-        self._recordings_section = CollapsibleSection("Recordings")
+        self._recordings_section = CollapsibleSection("Library")
         self._recordings_section.content_layout().addWidget(self.recordings_list)
         self._recordings_section.set_expanded(True)
         left_layout.addWidget(self._recordings_section, 1)
@@ -244,16 +308,38 @@ class MainWindow(QMainWindow):
 
         splitter.addWidget(left_panel)
 
-        # Right panel: tabs for transcript and notes
+        # Workspace: session context, then a quiet, borderless tab surface.
         right_panel = QWidget()
+        right_panel.setObjectName("workspace")
+        right_panel.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
         right_layout = QVBoxLayout(right_panel)
-        right_layout.setContentsMargins(8, 8, 8, 8)
+        right_layout.setContentsMargins(26, 18, 26, 16)
+        right_layout.setSpacing(14)
 
-        # Recording header (above tabs)
+        workspace_header = QHBoxLayout()
+        title_stack = QVBoxLayout()
+        title_stack.setSpacing(2)
+        workspace_kicker = QLabel("TALKTRACK  /  WORKSPACE")
+        workspace_kicker.setObjectName("workspaceKicker")
+        workspace_title = QLabel("Recording studio")
+        workspace_title.setObjectName("workspaceTitle")
+        title_stack.addWidget(workspace_kicker)
+        title_stack.addWidget(workspace_title)
+        workspace_header.addLayout(title_stack)
+        workspace_header.addStretch()
+
+        settings_button = QPushButton("Settings")
+        settings_button.setObjectName("quietButton")
+        settings_button.clicked.connect(self._open_settings)
+        workspace_header.addWidget(settings_button)
+        right_layout.addLayout(workspace_header)
+
         self.recording_header = RecordingHeader()
+        self.recording_header.setObjectName("recordingHeader")
         right_layout.addWidget(self.recording_header)
 
         self.tabs = QTabWidget()
+        self.tabs.setObjectName("workspaceTabs")
 
         # Transcript tab
         self.transcript_viewer = TranscriptViewer(config=self.config)
@@ -269,18 +355,18 @@ class MainWindow(QMainWindow):
 
         # Action Items tab
         self.action_items_panel = ActionItemsPanel()
-        self.tabs.addTab(self.action_items_panel, "Action Items")
+        self.tabs.addTab(self.action_items_panel, "Action items")
 
         # Chat tab
         self.chat_panel = ChatPanel()
-        self.tabs.addTab(self.chat_panel, "Chat")
+        self.tabs.addTab(self.chat_panel, "Ask AI")
 
         right_layout.addWidget(self.tabs)
         splitter.addWidget(right_panel)
 
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
-        splitter.setSizes([380, 880])
+        splitter.setSizes([330, 1030])
         main_layout.addWidget(splitter)
 
     def _update_left_panel_stretch(self, *_):
@@ -325,6 +411,7 @@ class MainWindow(QMainWindow):
         # Transcript
         self.transcript_viewer.transcribe_requested.connect(self._start_transcription)
         self.transcript_viewer.cancel_requested.connect(self._cancel_transcription)
+        self.import_audio_btn.clicked.connect(self._import_audio_file)
 
         # Recordings list
         self.recordings_list.recording_selected.connect(self._on_recording_selected)
@@ -810,6 +897,79 @@ class MainWindow(QMainWindow):
         self.status_label.setText("Transcription cancelled.")
         self._process_pending_transcriptions()
 
+    def _import_audio_file(self):
+        """Import an existing audio file as a new, searchable session."""
+        if self._audio_import_worker and self._audio_import_worker.isRunning():
+            return
+
+        source_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Import audio file",
+            str(Path.home()),
+            "Audio files (*.wav *.mp3 *.m4a *.flac *.ogg *.aac *.wma *.opus);;All files (*)",
+        )
+        if not source_path:
+            return
+
+        diarization_ready = (
+            self.config.get("diarization", "enabled")
+            and bool(self.config.get("diarization", "hf_token"))
+        )
+        if not diarization_ready:
+            dialog = QMessageBox(self)
+            dialog.setIcon(QMessageBox.Icon.Information)
+            dialog.setWindowTitle("Speaker separation setup")
+            dialog.setText(
+                "TalkTrack can transcribe this file now. To label who is speaking, "
+                "enable speaker diarization and add a Hugging Face read token in Settings."
+            )
+            configure = dialog.addButton(
+                "Configure…", QMessageBox.ButtonRole.ActionRole
+            )
+            continue_button = dialog.addButton(
+                "Import without speaker labels", QMessageBox.ButtonRole.AcceptRole
+            )
+            dialog.addButton("Cancel", QMessageBox.ButtonRole.RejectRole)
+            dialog.exec()
+            if dialog.clickedButton() is configure:
+                self._show_diarization_setup()
+                diarization_ready = (
+                    self.config.get("diarization", "enabled")
+                    and bool(self.config.get("diarization", "hf_token"))
+                )
+                if not diarization_ready:
+                    return
+            elif dialog.clickedButton() is not continue_button:
+                return
+
+        self.import_audio_btn.setEnabled(False)
+        self.status_label.setText("Preparing imported audio…")
+        self._audio_import_worker = AudioImportWorker(
+            source_path,
+            self.config.get("output", "directory"),
+            self,
+        )
+        self._audio_import_worker.imported.connect(self._on_audio_imported)
+        self._audio_import_worker.error.connect(self._on_audio_import_error)
+        self._audio_import_worker.start()
+
+    def _on_audio_imported(self, session):
+        self.import_audio_btn.setEnabled(True)
+        self.recordings_list.refresh()
+        self._on_recording_selected(session)
+        audio_path = session["audio_files"]["combined"]
+        self.status_label.setText("Audio imported — starting transcription and speaker separation…")
+        self._start_transcription(audio_path, session=session)
+
+    def _on_audio_import_error(self, error_message):
+        self.import_audio_btn.setEnabled(True)
+        self.status_label.setText("Audio import failed.")
+        QMessageBox.warning(
+            self,
+            "Audio import failed",
+            f"TalkTrack could not import this audio file.\n\n{error_message}",
+        )
+
     def _process_pending_transcriptions(self):
         if self._closing or self._transcription_busy():
             return
@@ -1248,7 +1408,18 @@ class MainWindow(QMainWindow):
 
     def _open_settings(self):
         dialog = SettingsDialog(self.config, self)
-        if dialog.exec():
+        self._settings_dialog = dialog
+        dialog.model_download_requested.connect(self._start_whisper_model_download)
+        worker = self._model_download_worker
+        if worker is not None and worker.isRunning():
+            dialog.set_model_download_state(
+                worker.model_size,
+                f"Downloading the {worker.model_size} model…",
+                running=True,
+            )
+        result = dialog.exec()
+        self._settings_dialog = None
+        if result:
             # Update recordings list with potentially new directory
             self.recordings_list.recordings_dir = Path(self.config.get("output", "directory"))
             self.recordings_list.refresh()
@@ -1256,6 +1427,60 @@ class MainWindow(QMainWindow):
             self.source_selector.refresh_devices()
             # Update mic2 visibility in case mic_count changed
             self.source_selector.update_mic_count(self.config.get("audio", "mic_count"))
+
+    def _start_whisper_model_download(self, model_size):
+        worker = self._model_download_worker
+        if worker is not None and worker.isRunning():
+            if self._settings_dialog is not None:
+                if worker.model_size == model_size:
+                    message = f"Downloading {model_size}. This may take a while…"
+                    running = True
+                else:
+                    message = (
+                        f"Another model ({worker.model_size}) is downloading. "
+                        "Wait for it to finish before starting another download."
+                    )
+                    running = True
+                self._settings_dialog.set_model_download_state(
+                    model_size, message, running=running
+                )
+            return
+
+        worker = WhisperModelDownloadWorker(model_size, self)
+        self._model_download_worker = worker
+        worker.completed.connect(self._on_whisper_model_downloaded)
+        worker.failed.connect(self._on_whisper_model_download_failed)
+        if self._settings_dialog is not None:
+            self._settings_dialog.set_model_download_state(
+                model_size,
+                f"Downloading {model_size}. This may take a while…",
+                running=True,
+            )
+        self.status_label.setText(f"Downloading Whisper {model_size} model…")
+        worker.start()
+
+    def _on_whisper_model_downloaded(self, model_size, _local_path):
+        if self._settings_dialog is not None:
+            if self._settings_dialog.model_combo.currentData() == model_size:
+                self._settings_dialog.set_model_download_state(
+                    model_size,
+                    f"{model_size} is downloaded and ready to use.",
+                    ready=True,
+                )
+            else:
+                self._settings_dialog._update_model_download_status()
+        self.status_label.setText(f"Whisper {model_size} model downloaded.")
+
+    def _on_whisper_model_download_failed(self, model_size, error_message):
+        if self._settings_dialog is not None:
+            if self._settings_dialog.model_combo.currentData() == model_size:
+                self._settings_dialog.set_model_download_state(
+                    model_size,
+                    f"Could not download {model_size}: {error_message}",
+                )
+            else:
+                self._settings_dialog._update_model_download_status()
+        self.status_label.setText(f"Could not download Whisper {model_size} model.")
 
     def _open_recordings_folder(self):
         import os
@@ -1568,7 +1793,11 @@ class MainWindow(QMainWindow):
         """
         if self._transcription_worker is not None and self._transcription_worker.isRunning():
             self._transcription_worker.cancel()
+        if self._audio_import_worker is not None and self._audio_import_worker.isRunning():
+            self._audio_import_worker.cancel()
         workers = [
+            self._audio_import_worker,
+            self._model_download_worker,
             self._transcription_worker,
             self._diarization_worker,
             self._simple_diarize_worker,
@@ -1585,13 +1814,13 @@ class MainWindow(QMainWindow):
 
     def _confirm_exit(self):
         """Show the exit-confirmation dialog. Returns True if user wants to quit."""
-        if self.recorder.state != RecordingState.IDLE:
-            body = (
-                "A recording is in progress. Exiting will stop and save "
-                "the current recording. Continue?"
-            )
-        else:
-            body = "Are you sure you want to exit?"
+        if self.recorder.state == RecordingState.IDLE:
+            return True
+
+        body = (
+            "A recording is in progress. Exiting will stop and save "
+            "the current recording. Continue?"
+        )
         reply = QMessageBox.question(
             self,
             "Exit TalkTrack?",

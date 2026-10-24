@@ -64,7 +64,7 @@ class LevelBar(QWidget):
         h = self.height()
 
         # Background
-        painter.fillRect(0, 0, w, h, QColor("#1e1e2e"))
+        painter.fillRect(0, 0, w, h, QColor("#14141B"))
 
         if w <= 0:
             painter.end()
@@ -74,15 +74,15 @@ class LevelBar(QWidget):
         bar_width = int(w * self._level)
         if bar_width > 0:
             gradient = QLinearGradient(0, 0, w, 0)
-            gradient.setColorAt(0.0, QColor("#a6e3a1"))   # green
-            gradient.setColorAt(0.6, QColor("#f9e2af"))   # yellow
-            gradient.setColorAt(1.0, QColor("#f38ba8"))   # red
+            gradient.setColorAt(0.0, QColor("#62C391"))   # green
+            gradient.setColorAt(0.6, QColor("#E7BF76"))   # yellow
+            gradient.setColorAt(1.0, QColor("#E44747"))   # red
             painter.fillRect(0, 0, bar_width, h, gradient)
 
         # Peak indicator (thin white line)
         peak_x = int(w * self._peak)
         if peak_x > 0 and self._peak > 0.01:
-            painter.setPen(QColor("#cdd6f4"))
+            painter.setPen(QColor("#F1EFF6"))
             painter.drawLine(peak_x, 0, peak_x, h)
 
         painter.end()
@@ -102,7 +102,7 @@ class LevelMeter(QWidget):
 
         # Mic meter
         mic_label = QLabel("Mic")
-        mic_label.setStyleSheet("color: #a6adc8; font-size: 11px;")
+        mic_label.setStyleSheet("color: #A09CA9; font-size: 11px;")
         mic_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self._mic_bar = LevelBar()
         layout.addWidget(mic_label)
@@ -110,7 +110,7 @@ class LevelMeter(QWidget):
 
         # System meter
         sys_label = QLabel("Sys")
-        sys_label.setStyleSheet("color: #a6adc8; font-size: 11px;")
+        sys_label.setStyleSheet("color: #A09CA9; font-size: 11px;")
         sys_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self._sys_bar = LevelBar()
         layout.addWidget(sys_label)

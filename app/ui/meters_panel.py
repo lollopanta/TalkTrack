@@ -135,36 +135,36 @@ class _VerticalMeter(QWidget):
         h = self.height()
 
         # Background
-        painter.fillRect(0, 0, w, h, QColor("#1e1e2e"))
+        painter.fillRect(0, 0, w, h, QColor("#14141B"))
 
         # Paint color zones top-to-bottom
         # -6 to 0 dB: red
         y_6 = _db_to_y(-6, h)
-        painter.fillRect(0, 0, w, y_6, QColor("#f38ba8"))
+        painter.fillRect(0, 0, w, y_6, QColor("#E44747"))
         # -18 to -6 dB: yellow
         y_18 = _db_to_y(-18, h)
-        painter.fillRect(0, y_6, w, y_18 - y_6, QColor("#f9e2af"))
+        painter.fillRect(0, y_6, w, y_18 - y_6, QColor("#E7BF76"))
         # -60 to -18 dB: green
-        painter.fillRect(0, y_18, w, h - y_18, QColor("#a6e3a1"))
+        painter.fillRect(0, y_18, w, h - y_18, QColor("#62C391"))
 
         # Overlay black over the empty region above the current level
         # (bar fills upward from the bottom, DAW-style)
         current_y = _db_to_y(self._db, h)
         if current_y > 0:
-            painter.fillRect(0, 0, w, current_y, QColor("#1e1e2e"))
+            painter.fillRect(0, 0, w, current_y, QColor("#14141B"))
 
         # Peak hold line (bright, 3px)
         peak_db = 20.0 * float(np.log10(max(self._peak_abs, 1e-10)))
         peak_db = max(peak_db, DB_FLOOR)
         peak_y = _db_to_y(peak_db, h)
         if peak_y < h and self._peak_abs > 0.001:
-            painter.setPen(QPen(QColor("#f5e0dc"), 3))
+            painter.setPen(QPen(QColor("#F1EFF6"), 3))
             peak_y_draw = min(peak_y, h - 2)
             painter.drawLine(0, peak_y_draw, w, peak_y_draw)
 
         # 2px outline so the channel is visible even when silent.
         # Drawn last so it overdraws any fills at the extreme edges.
-        border = QColor("#313244")
+        border = QColor("#34333E")
         painter.fillRect(0, 0, w, 2, border)
         painter.fillRect(0, h - 2, w, 2, border)
         painter.fillRect(0, 0, 2, h, border)
@@ -183,12 +183,12 @@ class _DbScale(QWidget):
 
     def paintEvent(self, event):
         painter = QPainter(self)
-        painter.fillRect(0, 0, self.width(), self.height(), QColor("#1e1e2e"))
+        painter.fillRect(0, 0, self.width(), self.height(), QColor("#14141B"))
 
         font = QFont()
         font.setPixelSize(11)
         painter.setFont(font)
-        painter.setPen(QColor("#a6adc8"))
+        painter.setPen(QColor("#A09CA9"))
 
         h = self.height()
         text_h = 16
@@ -261,7 +261,7 @@ class MetersPanel(QWidget):
         mic_header = QHBoxLayout()
         mic_header.setSpacing(4)
         self._mic_clip_led = QLabel("\u25cf")  # filled circle
-        self._mic_clip_led.setStyleSheet("color: #45475a; font-size: 12px;")
+        self._mic_clip_led.setStyleSheet("color: #41404B; font-size: 12px;")
         self._mic_clip_led.setToolTip("Clip indicator - lights red on clipping")
         mic_header.addWidget(self._mic_clip_led)
         mic_header.addStretch()
@@ -271,7 +271,7 @@ class MetersPanel(QWidget):
         mic_col.addWidget(self._mic_meter, 0, Qt.AlignmentFlag.AlignHCenter)
 
         mic_title = QLabel("MIC")
-        mic_title.setStyleSheet("color: #a6adc8; font-size: 10px; font-weight: bold;")
+        mic_title.setStyleSheet("color: #A09CA9; font-size: 10px; font-weight: bold;")
         mic_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         mic_col.addWidget(mic_title)
 
@@ -284,7 +284,7 @@ class MetersPanel(QWidget):
         sys_header = QHBoxLayout()
         sys_header.setSpacing(4)
         self._sys_clip_led = QLabel("\u25cf")
-        self._sys_clip_led.setStyleSheet("color: #45475a; font-size: 12px;")
+        self._sys_clip_led.setStyleSheet("color: #41404B; font-size: 12px;")
         self._sys_clip_led.setToolTip("Clip indicator - lights red on clipping")
         sys_header.addWidget(self._sys_clip_led)
         sys_header.addStretch()
@@ -294,7 +294,7 @@ class MetersPanel(QWidget):
         sys_col.addWidget(self._sys_meter, 0, Qt.AlignmentFlag.AlignHCenter)
 
         sys_title = QLabel("SYS")
-        sys_title.setStyleSheet("color: #a6adc8; font-size: 10px; font-weight: bold;")
+        sys_title.setStyleSheet("color: #A09CA9; font-size: 10px; font-weight: bold;")
         sys_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         sys_col.addWidget(sys_title)
 
@@ -307,7 +307,7 @@ class MetersPanel(QWidget):
         gain_row = QHBoxLayout()
         gain_row.setSpacing(6)
         gain_label = QLabel("Mic Gain:")
-        gain_label.setStyleSheet("color: #a6adc8; font-size: 11px;")
+        gain_label.setStyleSheet("color: #A09CA9; font-size: 11px;")
         gain_row.addWidget(gain_label)
 
         self._gain_slider = QSlider(Qt.Orientation.Horizontal)
@@ -324,7 +324,7 @@ class MetersPanel(QWidget):
 
         self._gain_readout = QLabel("1.0x")
         self._gain_readout.setStyleSheet(
-            "color: #cdd6f4; font-size: 11px; min-width: 34px;"
+            "color: #F1EFF6; font-size: 11px; min-width: 34px;"
         )
         self._gain_readout.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
@@ -372,6 +372,6 @@ class MetersPanel(QWidget):
 
     def _set_clip_led(self, label: QLabel, active: bool):
         if active:
-            label.setStyleSheet("color: #f38ba8; font-size: 12px;")
+            label.setStyleSheet("color: #E44747; font-size: 12px;")
         else:
-            label.setStyleSheet("color: #45475a; font-size: 12px;")
+            label.setStyleSheet("color: #41404B; font-size: 12px;")
