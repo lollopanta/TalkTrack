@@ -1,8 +1,16 @@
 import copy
 import json
 import os
+import sys
 from pathlib import Path
 
+
+_SOURCE_RECORDINGS_DIR = Path(__file__).resolve().parents[2] / "recordings"
+_RECORDINGS_DIR = (
+    Path.home() / ".talktrack" / "recordings"
+    if getattr(sys, "frozen", False)
+    else _SOURCE_RECORDINGS_DIR
+)
 
 DEFAULT_CONFIG = {
     "audio": {
@@ -20,7 +28,7 @@ DEFAULT_CONFIG = {
         "mic_gain": 1.0,
     },
     "output": {
-        "directory": str(Path(__file__).parent.parent.parent / "recordings"),
+        "directory": str(_RECORDINGS_DIR),
         "format": "wav",
         "filename_template": "recording_{timestamp}",
     },

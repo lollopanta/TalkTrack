@@ -70,6 +70,10 @@ cd TalkTrack
 
 Just double-click **`start.bat`**. On first launch it sets up an isolated environment and installs dependencies automatically — no manual steps needed.
 
+#### Prebuilt app downloads
+
+The [**Build desktop apps**](.github/workflows/build-app.yml) workflow creates ZIP artifacts for Windows x64 and macOS Apple Silicon on pushes to `master`, pull requests, version tags (`v*`), or manual runs. Download them from the completed run's **Artifacts** section. Artifacts are retained for 14 days; these are portable app bundles, not installers. The macOS build is not signed or notarized by Apple, so macOS may ask you to approve it the first time you open it. Local `llama.cpp` AI is available through the source install, but is not included in the packaged builds.
+
 > **Note:** dependencies are installed into a project-local virtual environment (`.venv`), **not** your global Python. This keeps heavy packages like PyTorch and pyannote.audio from polluting or upgrading packages in your system Python.
 
 #### Recommended: [uv](https://docs.astral.sh/uv/)

@@ -58,3 +58,11 @@ runs and let a commit land on the default branch unverified (happened once, to 9
 
 `astral-sh/setup-uv` publishes **no moving major tag** — `@v10` does not resolve, so it is pinned
 exactly and needs manual bumps. `actions/checkout` and `actions/setup-python` do publish them.
+
+## Desktop app builds
+
+`.github/workflows/build-app.yml` creates PyInstaller one-folder builds for macOS ARM64 and
+Windows x64. The macOS job compiles and bundles the CoreAudio helper and creates the app icon;
+both jobs upload ZIP artifacts for 14 days. Cloud AI SDKs are included in these builds, but
+`llama-cpp-python` is omitted because its native builds are platform-specific. These artifacts
+are unsigned and are not installers.

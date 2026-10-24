@@ -42,6 +42,11 @@ def _find_launch_target(app_dir):
     """
     app_dir = Path(app_dir)
 
+    # In a frozen distribution the executable already contains its runtime and
+    # dependencies; the shortcut must launch it directly without a script arg.
+    if getattr(sys, "frozen", False):
+        return sys.executable, ""
+
     venv_pythonw = app_dir / ".venv" / "Scripts" / "pythonw.exe"
     if venv_pythonw.exists():
         return str(venv_pythonw), f'"{app_dir / "main.py"}"'
@@ -90,7 +95,10 @@ def needs_shortcut(app_dir):
     # Shortcut exists — check if it points to the right target
     try:
         target, args, icon = _read_shortcut(lnk)
-        target_ok = bool(target and args and str(app_dir / "main.py") in args)
+        if getattr(sys, "frozen", False):
+            target_ok = bool(target and Path(target) == Path(sys.executable) and not args)
+        else:
+            target_ok = bool(target and args and str(app_dir / "main.py") in args)
         icon_ok = icon and str(icon_path) in icon
         if target_ok and icon_ok:
             return False
