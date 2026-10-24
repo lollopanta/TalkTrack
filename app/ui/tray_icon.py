@@ -1,14 +1,19 @@
-"""System tray icon for TalkTrack.
-
-Pure helpers are module-level and unit-testable. The Qt widget class (TrayIcon)
-comes in a later task and will compose them with QSystemTrayIcon.
-"""
-from app.recording.recorder import RecordingState
-
+"""System tray icon for TalkTrack."""
+import platform
 from pathlib import Path
 
-from PyQt6.QtCore import pyqtSignal, QObject
-from PyQt6.QtGui import QAction, QColor, QIcon, QPainter, QPen, QPixmap
+from app.recording.recorder import RecordingState
+
+from PyQt6.QtCore import QObject, QSize, Qt, pyqtSignal
+from PyQt6.QtGui import (
+    QAction,
+    QColor,
+    QGuiApplication,
+    QIcon,
+    QPainter,
+    QPen,
+    QPixmap,
+)
 from PyQt6.QtWidgets import QMenu, QSystemTrayIcon
 
 
@@ -51,10 +56,21 @@ def resolve_overlay(has_success, has_error):
 
 
 _ICON_PATH = Path(__file__).parent.parent.parent / "resources" / "talktrack.ico"
+_MENUBAR_ICON_1X = (
+    Path(__file__).parent.parent.parent / "resources" / "talktrack-menubar-18.png"
+)
+_MENUBAR_ICON_2X = (
+    Path(__file__).parent.parent.parent / "resources" / "talktrack-menubar-36.png"
+)
+_IS_MACOS = platform.system() == "Darwin"
 
 _DOT_COLORS = {
     "green": QColor("#a6e3a1"),
     "red": QColor("#f38ba8"),
+}
+_LIGHT_DOT_COLORS = {
+    "green": QColor("#267d3a"),
+    "red": QColor("#c93043"),
 }
 
 
@@ -74,7 +90,7 @@ class TrayIcon(QObject):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._base_icon = QIcon(str(_ICON_PATH))
+        self._base_icon = self._load_base_icon()
         self._current_overlay = None
 
         self._tray = QSystemTrayIcon(self._base_icon, parent)
@@ -106,6 +122,45 @@ class TrayIcon(QObject):
         self._tray.setContextMenu(self._menu)
         self.set_state(RecordingState.IDLE, 0)
 
+        if _IS_MACOS:
+            QGuiApplication.styleHints().colorSchemeChanged.connect(
+                self._on_color_scheme_changed
+            )
+
+    @staticmethod
+    def _load_base_icon():
+        if not _IS_MACOS:
+            return QIcon(str(_ICON_PATH))
+
+        icon = QIcon()
+        icon.addFile(str(_MENUBAR_ICON_1X), QSize(18, 18))
+        icon.addFile(str(_MENUBAR_ICON_2X), QSize(36, 36))
+        # Qt's Cocoa tray backend passes mask icons to AppKit as template images,
+        # which macOS automatically renders against light and dark menu bars.
+        icon.setIsMask(True)
+        return icon
+
+    @staticmethod
+    def _menu_bar_foreground():
+        scheme = QGuiApplication.styleHints().colorScheme()
+        if scheme == Qt.ColorScheme.Dark:
+            return QColor("#F5F0FF")
+        return QColor("#292433")
+
+    @staticmethod
+    def _overlay_color(name):
+        if _IS_MACOS and QGuiApplication.styleHints().colorScheme() != Qt.ColorScheme.Dark:
+            return _LIGHT_DOT_COLORS[name]
+        return _DOT_COLORS[name]
+
+    def _on_color_scheme_changed(self, _scheme):
+        # The regular status icon is a native template. Repaint only transient
+        # colored notification overlays when macOS changes appearance.
+        if _IS_MACOS and self._current_overlay:
+            self._tray.setIcon(
+                self._compose_icon_with_dot(self._overlay_color(self._current_overlay))
+            )
+
     def is_supported(self):
         return QSystemTrayIcon.isSystemTrayAvailable()
 
@@ -132,7 +187,7 @@ class TrayIcon(QObject):
         if color is None:
             self._tray.setIcon(self._base_icon)
         else:
-            self._tray.setIcon(self._compose_icon_with_dot(_DOT_COLORS[color]))
+            self._tray.setIcon(self._compose_icon_with_dot(self._overlay_color(color)))
 
     def show_hint_balloon(self):
         """One-time welcome balloon shown on first tray hide."""
@@ -154,14 +209,33 @@ class TrayIcon(QObject):
         """Return a QIcon with a colored dot overlaid on the base icon."""
         size = 64
         pixmap = self._base_icon.pixmap(size, size)
-        canvas = QPixmap(pixmap)
+        canvas = QPixmap(size, size)
+        canvas.fill(Qt.GlobalColor.transparent)
         painter = QPainter(canvas)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        diameter = int(size * 0.4)
-        margin = 2
-        x = size - diameter - margin
-        y = size - diameter - margin
-        painter.setPen(QPen(QColor("#1e1e2e"), 1))
+        painter.drawPixmap(0, 0, pixmap)
+
+        if _IS_MACOS:
+            # A composed pixmap is no longer a native template, so tint its
+            # monochrome base to match the current macOS appearance explicitly.
+            painter.setCompositionMode(
+                QPainter.CompositionMode.CompositionMode_SourceIn
+            )
+            painter.fillRect(canvas.rect(), self._menu_bar_foreground())
+            painter.setCompositionMode(
+                QPainter.CompositionMode.CompositionMode_SourceOver
+            )
+            diameter = 10
+            x = size - diameter - 3
+            y = 3
+            outline = self._menu_bar_foreground()
+            painter.setPen(QPen(outline, 1.5))
+        else:
+            diameter = int(size * 0.4)
+            margin = 2
+            x = size - diameter - margin
+            y = size - diameter - margin
+            painter.setPen(QPen(QColor("#1e1e2e"), 1))
         painter.setBrush(color)
         painter.drawEllipse(x, y, diameter, diameter)
         painter.end()

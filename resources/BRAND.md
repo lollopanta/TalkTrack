@@ -17,6 +17,7 @@ stroke of clear space around them.
 - `TT_logo.svg`: horizontal wordmark master; `TT_logo_655x200.png` and
   `TT_logo_1300x400.png` are raster previews for places that need PNG.
 - `talktrack-app-icon.svg`: square app icon master.
+- `talktrack-menubar.svg`: reduced monochrome macOS status-bar mark; its PNG exports are mask icons so macOS adapts them to light and dark menu bars.
 - `TT_icon_*.png`: app icon exports used by macOS, the splash screen, and About.
 - `talktrack.ico`: multi-size Windows icon used by the taskbar shortcut and tray.
 - `favicon.ico`: multi-size favicon export.

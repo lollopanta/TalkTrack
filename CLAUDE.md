@@ -128,6 +128,7 @@ TalkTrack/
     TT_logo_*.png                      # Logo files (655x200, 1300x400)
     talktrack-mark*.svg                # Full-color and monochrome logo masters
     TT_logo.svg                        # Outlined horizontal wordmark master
+    talktrack-menubar*.png             # Compact macOS light/dark status-bar icon
     BRAND.md                           # Palette and logo usage notes
   scripts/
     find_call_audio_pid.py             # Diagnostic: which PID renders call audio
