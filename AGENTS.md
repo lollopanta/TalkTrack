@@ -1,6 +1,6 @@
 # TalkTrack — Codex Instructions
 
-TalkTrack is a Windows desktop application for recording, transcribing, diarizing, and searching call audio. It uses PyQt6, sounddevice/WASAPI, faster-whisper, pyannote.audio, and optional cloud/local AI providers.
+TalkTrack is a Windows and macOS desktop application for recording, transcribing, diarizing, and searching call audio. It uses PyQt6 and sounddevice; Windows adds WASAPI/COM capture, while macOS 14.4+ uses native Core Audio taps (older macOS can use BlackHole). Transcription uses faster-whisper and pyannote.audio, with optional cloud/local AI providers.
 
 ## Project map
 
@@ -19,7 +19,7 @@ TalkTrack is a Windows desktop application for recording, transcribing, diarizin
 - For non-UI logic, use the repository's test-first convention. For PyQt UI changes, use an import smoke test or a focused test that does not construct real widgets unless the task calls for it.
 - Run tests with the global `python -m pytest tests/ -v`; do not use bare `uv run` because it may sync and replace the configured PyTorch build. If uv is needed, use `--no-sync`.
 - Keep `requirements.txt`, `pyproject.toml`, and `uv.lock` aligned when dependencies change.
-- The app targets Windows. Hardware- and Windows-specific behavior may require mocks or Windows smoke testing; do not assume it can be exercised on other platforms.
+- Platform-specific capture behavior must remain isolated: Windows per-app capture depends on COM; macOS 14.4+ uses the Swift Core Audio tap helper and older versions may use a virtual input. Hardware-specific behavior may require mocks or platform smoke testing.
 
 ## Project skills
 

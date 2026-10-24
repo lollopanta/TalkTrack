@@ -19,7 +19,12 @@ from PyQt6.QtGui import QAction
 from app.utils.atomic_io import atomic_write_json, atomic_write_text
 from app.utils.config import Config
 from app.recording.audio_capture import LoopbackStream
-from app.recording.process_audio_capture import ProcessAudioCapture
+from app.utils.platform_info import is_windows
+from app.utils.audio_devices import MACOS_CORE_AUDIO_TAP_DEVICE
+if is_windows():
+    from app.recording.process_audio_capture import ProcessAudioCapture
+else:
+    ProcessAudioCapture = None
 from app.recording.mic_monitor import MicMonitor
 from app.recording.recorder import Recorder, RecordingState
 from app.transcription.transcriber import TranscriptionWorker, TranscriptResult
@@ -72,7 +77,7 @@ class MainWindow(QMainWindow):
         self._auto_record_timer.timeout.connect(self._on_auto_record_timer_fired)
 
         self.setWindowTitle("TalkTrack - Call Recorder, Transcriber & AI Summarizer")
-        self.setMinimumSize(1000, 700)
+        self.setMinimumSize(900, 620)
         self.resize(1260, 800)
 
         self._setup_menu()
@@ -135,9 +140,10 @@ class MainWindow(QMainWindow):
         diarization_setup_action.triggered.connect(self._show_diarization_setup)
         help_menu.addAction(diarization_setup_action)
 
-        shortcut_action = QAction("Add to Start &Menu...", self)
-        shortcut_action.triggered.connect(self._install_start_menu_shortcut)
-        help_menu.addAction(shortcut_action)
+        self._shortcut_action = QAction("Add to Start &Menu...", self)
+        self._shortcut_action.triggered.connect(self._install_start_menu_shortcut)
+        if is_windows():
+            help_menu.addAction(self._shortcut_action)
 
         help_menu.addSeparator()
 
@@ -168,11 +174,14 @@ class MainWindow(QMainWindow):
 
         # Main splitter: left (controls) | right (tabs)
         splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.setChildrenCollapsible(False)
+        splitter.setHandleWidth(6)
 
         # Left panel: controls at top, sources collapsible, recordings below
         left_panel = QWidget()
         left_panel.setObjectName("leftPanel")
-        left_panel.setFixedWidth(400)
+        left_panel.setMinimumWidth(320)
+        left_panel.setMaximumWidth(460)
         left_layout = QVBoxLayout(left_panel)
         left_layout.setContentsMargins(8, 8, 8, 8)
 
@@ -188,7 +197,7 @@ class MainWindow(QMainWindow):
 
         # Idle-time level monitors. Off by default every launch — user
         # enables them via the Test Mic button in recording_controls.
-        # The system monitor uses WASAPI loopback regardless of capture mode
+        # The system monitor follows the platform's configured system-audio input.
         # (per-app capture is heavier and not worth spinning up for preview).
         self.mic_monitor = MicMonitor(
             sample_rate=self.config.get("audio", "sample_rate"),
@@ -269,7 +278,9 @@ class MainWindow(QMainWindow):
         right_layout.addWidget(self.tabs)
         splitter.addWidget(right_panel)
 
-        splitter.setSizes([400, 860])
+        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(1, 1)
+        splitter.setSizes([380, 880])
         main_layout.addWidget(splitter)
 
     def _update_left_panel_stretch(self, *_):
@@ -486,13 +497,16 @@ class MainWindow(QMainWindow):
             self.system_monitor = monitor
             return
 
-        # Legacy WASAPI loopback path.
+        # Platform system-audio input (WASAPI on Windows; virtual input on macOS).
         device = self.source_selector.get_selected_loopback()
         if device is None:
             return
         try:
-            dev_info = sd.query_devices(device)
-            device_name = dev_info.get("name", "")
+            if device == MACOS_CORE_AUDIO_TAP_DEVICE:
+                device_name = MACOS_CORE_AUDIO_TAP_DEVICE
+            else:
+                dev_info = sd.query_devices(device)
+                device_name = dev_info.get("name", "")
             self.system_monitor = LoopbackStream(
                 device_name=device_name,
                 sample_rate=self.config.get("audio", "sample_rate"),
@@ -1247,7 +1261,9 @@ class MainWindow(QMainWindow):
         import os
         recordings_dir = self.config.get("output", "directory")
         os.makedirs(recordings_dir, exist_ok=True)
-        os.startfile(recordings_dir)
+        from PyQt6.QtCore import QUrl
+        from PyQt6.QtGui import QDesktopServices
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(Path(recordings_dir))))
 
     def _show_system_status(self):
         dialog = SystemStatusDialog(self.config, self)
@@ -1269,7 +1285,8 @@ class MainWindow(QMainWindow):
 
         # One-time offer to add a Start Menu shortcut (correct taskbar icon).
         # Delayed so it lands after any setup/status dialogs above.
-        QTimer.singleShot(1500, self._maybe_offer_start_menu_shortcut)
+        if is_windows():
+            QTimer.singleShot(1500, self._maybe_offer_start_menu_shortcut)
 
     def _maybe_offer_start_menu_shortcut(self):
         """Offer to add a Start Menu shortcut once, on startup.
@@ -1320,7 +1337,9 @@ class MainWindow(QMainWindow):
         from main import get_log_file
         log_path = get_log_file()
         if log_path.exists():
-            os.startfile(str(log_path))
+            from PyQt6.QtCore import QUrl
+            from PyQt6.QtGui import QDesktopServices
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(log_path)))
         else:
             QMessageBox.information(self, "Log File", "No log file found yet.")
 

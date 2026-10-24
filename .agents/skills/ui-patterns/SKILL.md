@@ -15,7 +15,7 @@ description: Use when changing PyQt UI layout, meters, tray behavior, QSS, or re
 
 ## Left panel layout
 
-- Fixed width 400px (`left_panel.setFixedWidth(400)`, objectName `leftPanel`). Intentionally non-draggable — prevents layout jitter on collapse/expand.
+- Resizable width from 320px to 460px (`left_panel`, objectName `leftPanel`), with a 380px default. Keep both splitter children non-collapsible so the controls and content remain reachable on narrower windows.
 - Left-pane font size reduced to 9pt via QSS `#leftPanel QLabel, #leftPanel QRadioButton, ...`. Timer keeps 13pt via `#leftPanel #timerLabel`.
 - Section title bands use `QFrame#collapsibleHeader` with `background-color: #313244` (Catppuccin surface0) and `border-radius: 4px`.
 

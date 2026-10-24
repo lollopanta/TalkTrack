@@ -3,7 +3,15 @@ name: talktrack-packaging-and-launch
 description: Use when changing dependencies, uv or pip setup, Windows launchers, CUDA extras, CI, or taskbar integration.
 ---
 
-# Packaging and launch: uv venv, CPU/CUDA torch, taskbar icon
+# Packaging and launch: Windows and macOS environments, dependencies, and launchers
+
+## macOS support
+
+- `start.command` builds the signed Core Audio tap helper on macOS 14.4+, then installs into the project `.venv` with `uv sync --extra cpu`, or falls back to `requirements.txt` with Python's `venv`.
+- `pywin32`, `pycaw`, `comtypes`, and `pyaudiowpatch` are Windows-only dependencies; keep their environment markers in both `pyproject.toml` and `requirements.txt`.
+- macOS 14.4+ system-audio capture uses the native Core Audio process tap helper in `app/platform/macos/system_audio_tap.swift`, bundled with `NSAudioCaptureUsageDescription`. Earlier macOS releases can use a virtual input such as BlackHole.
+- macOS uses CPU inference in the current configuration. Do not present CUDA or Windows Start Menu shortcuts as available there.
+- `uv.lock` must be regenerated after dependency marker changes so it contains the platform-specific resolutions.
 
 ## Install model (uv-first, isolated `.venv`)
 

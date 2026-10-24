@@ -171,6 +171,21 @@ QLabel#recordingIndicator {
     font-weight: bold;
 }
 
+QLabel#controlState {
+    color: #a6adc8;
+    font-weight: bold;
+}
+
+QLabel#controlState[state="recording"] { color: #f38ba8; }
+QLabel#controlState[state="paused"] { color: #fab387; }
+QLabel#controlState[state="saving"] { color: #89b4fa; }
+
+QLabel#recordingsEmptyState {
+    color: #7f849c;
+    padding: 20px;
+    background: transparent;
+}
+
 QLabel#sectionHeader {
     font-size: 14px;
     font-weight: bold;
@@ -348,6 +363,10 @@ QSplitter::handle {
     background-color: #313244;
     width: 2px;
     height: 2px;
+}
+
+QSplitter::handle:hover {
+    background-color: #89b4fa;
 }
 
 /* Line Edit */

@@ -64,7 +64,7 @@ warnings.filterwarnings("ignore", message=".*std\\(\\).*degrees of freedom.*")
 try:
     import torch as _torch
     _torch_lib = os.path.join(os.path.dirname(_torch.__file__), "lib")
-    if os.path.isdir(_torch_lib):
+    if os.path.isdir(_torch_lib) and hasattr(os, "add_dll_directory"):
         os.add_dll_directory(_torch_lib)
     del _torch, _torch_lib
 except ImportError:
@@ -161,7 +161,9 @@ def _exception_handler(exc_type, exc_value, exc_tb):
         if clicked == report_btn:
             webbrowser.open(build_bug_report_url(error_text))
         elif clicked == open_log_btn:
-            os.startfile(str(LOG_FILE))
+            from PyQt6.QtCore import QUrl
+            from PyQt6.QtGui import QDesktopServices
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(LOG_FILE)))
     except Exception:
         pass
 
@@ -180,7 +182,9 @@ def main():
 
     # Set app icon
     from PyQt6.QtGui import QIcon
-    icon_path = Path(__file__).parent / "resources" / "talktrack.ico"
+    icon_path = Path(__file__).parent / "resources" / (
+        "TT_icon_256x256.png" if platform.system() == "Darwin" else "talktrack.ico"
+    )
     if icon_path.exists():
         app.setWindowIcon(QIcon(str(icon_path)))
 

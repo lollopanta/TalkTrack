@@ -21,3 +21,7 @@ CLAUDE.local.md
 docs/plans/
 nul
 temp.txt
+
+# macOS Finder metadata
+.DS_Store
+.build/

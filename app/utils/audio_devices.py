@@ -1,4 +1,25 @@
+import platform
+from pathlib import Path
+
 import sounddevice as sd
+
+
+MACOS_CORE_AUDIO_TAP_DEVICE = "talktrack:core-audio-tap"
+
+
+def _macos_core_audio_taps_available():
+    """Check OS support and whether the native tap helper has been built."""
+    version = platform.mac_ver()[0]
+    try:
+        parts = tuple(int(part) for part in version.split(".")[:2])
+    except ValueError:
+        return False
+    if parts < (14, 4):
+        return False
+    helper = (Path(__file__).resolve().parents[2] / ".build"
+              / "TalkTrackAudioCapture.app" / "Contents" / "MacOS"
+              / "TalkTrackAudioCapture")
+    return helper.is_file()
 
 
 def _is_hidden(name, hidden_devices):
@@ -49,24 +70,49 @@ def get_loopback_devices():
 
 
 def get_system_audio_devices(hidden_devices=None):
-    """Return WASAPI output devices for system audio loopback capture.
+    """Return devices usable as a system-audio capture source.
 
-    These are speakers/headphone output devices. PyAudioWPatch automatically
-    finds the corresponding loopback input device by name matching.
+    Windows uses output devices whose loopback input is provided by
+    PyAudioWPatch. macOS 14.4+ uses Apple's native Core Audio process tap;
+    older versions can use a virtual input such as BlackHole.
     """
     devices = sd.query_devices()
     outputs = []
+    is_macos = platform.system() == "Darwin"
+    if is_macos and _macos_core_audio_taps_available():
+        native = {
+            "index": MACOS_CORE_AUDIO_TAP_DEVICE,
+            "name": "macOS System Audio",
+            "channels": 1,
+            "sample_rate": 48000,
+            "hostapi": "Core Audio Tap",
+        }
+        if not _is_hidden(native["name"], hidden_devices):
+            outputs.append(native)
     for i, dev in enumerate(devices):
         hostapi = sd.query_hostapis(dev["hostapi"])
-        if hostapi["name"] == "Windows WASAPI" and dev["max_output_channels"] > 0:
+        if is_macos:
+            # Only list common virtual loopback devices, not microphones.
+            virtual_loopback = any(
+                marker in dev["name"].lower()
+                for marker in ("blackhole", "loopback", "soundflower")
+            )
+            usable = virtual_loopback and dev["max_input_channels"] > 0
+            label = "Virtual Audio Input"
+        else:
+            usable = (hostapi["name"] == "Windows WASAPI"
+                      and dev["max_output_channels"] > 0)
+            label = "WASAPI"
+        if usable:
             if _is_hidden(dev["name"], hidden_devices):
                 continue
             outputs.append({
                 "index": i,
                 "name": dev["name"],
-                "channels": dev["max_output_channels"],
+                "channels": (dev["max_input_channels"] if is_macos
+                             else dev["max_output_channels"]),
                 "sample_rate": dev["default_samplerate"],
-                "hostapi": "WASAPI",
+                "hostapi": label,
             })
     return outputs
 
@@ -85,12 +131,15 @@ def get_default_mic():
 
 
 def get_default_output():
-    """Return the default output device index (for loopback).
+    """Return the system-audio source index.
 
-    sd.default.device[1] returns a DirectSound/MME index which doesn't match
-    WASAPI device indices. We match by name instead to find the corresponding
-    WASAPI output device.
+    On macOS this is the first detected virtual loopback input. On Windows,
+    sd.default.device[1] can return a DirectSound/MME index that doesn't match
+    WASAPI, so match by device name instead.
     """
+    if platform.system() == "Darwin":
+        outputs = get_system_audio_devices()
+        return outputs[0]["index"] if outputs else None
     try:
         default_idx = sd.default.device[1]
         if default_idx is not None and default_idx >= 0:

@@ -11,6 +11,7 @@ from app.utils.audio_devices import (
     get_default_mic, get_default_output
 )
 from app.utils.platform_info import is_windows_11
+from app.utils.platform_info import is_windows
 from app.ui.collapsible_section import CollapsibleSection
 
 
@@ -45,14 +46,16 @@ def format_per_app_suffix(names):
 
 
 def format_legacy_suffix(combo_text):
-    """Build the collapsed-title suffix for legacy loopback mode.
+    """Build the collapsed-title suffix for system-audio input mode.
 
-    Strips the trailing " (WASAPI Loopback)" marker from the combo label.
+    Strips the backend marker from the combo label.
     """
-    wasapi_suffix = " (WASAPI Loopback)"
     text = combo_text
-    if text.endswith(wasapi_suffix):
-        text = text[: -len(wasapi_suffix)]
+    for suffix in (" (WASAPI Loopback)", " (System Audio Input)",
+                   " (Core Audio Tap)", " (Virtual Audio Input)"):
+        if text.endswith(suffix):
+            text = text[:-len(suffix)]
+            break
     return f"({text})"
 
 
@@ -464,7 +467,9 @@ class SourceSelector(QWidget):
         default_lb_idx = 0
 
         for i, dev in enumerate(self._loopback_devices):
-            label = f"{dev['name']} (WASAPI Loopback)"
+            suffix = ("WASAPI Loopback" if is_windows()
+                      else dev["hostapi"])
+            label = f"{dev['name']} ({suffix})"
             self.loopback_combo.addItem(label, dev["index"])
             if dev["index"] == default_output:
                 default_lb_idx = i + 1

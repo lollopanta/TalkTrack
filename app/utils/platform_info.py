@@ -7,6 +7,11 @@ def is_windows():
     return platform.system() == "Windows"
 
 
+def is_macos():
+    """Check if running on macOS."""
+    return platform.system() == "Darwin"
+
+
 def is_windows_11():
     """Check if running on Windows 11 (Build 22000+).
 

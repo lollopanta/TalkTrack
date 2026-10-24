@@ -1,10 +1,11 @@
 """Dependency checker for TalkTrack system status panel."""
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 from app.utils.audio_devices import get_input_devices, get_wasapi_output_devices
-from app.utils.platform_info import is_windows_11, get_windows_build
+from app.utils.platform_info import is_windows, is_windows_11, get_windows_build
 
 
 def whisper_cache_dir(model_size):
@@ -75,6 +76,9 @@ class DependencyChecker:
 
         if damaged:
             names = ", ".join(damaged)
+            venv_python = (Path(".venv") / "Scripts" / "python.exe"
+                           if sys.platform == "win32"
+                           else Path(".venv") / "bin" / "python")
             return {
                 "name": "Package Metadata",
                 "passed": False,
@@ -86,7 +90,7 @@ class DependencyChecker:
                 ),
                 "action": (
                     "Close TalkTrack and force-reinstall into the venv:\n"
-                    f"uv pip install --python .venv\\Scripts\\python.exe "
+                    f"uv pip install --python {venv_python} "
                     f"--force-reinstall {' '.join(damaged)}"
                 ),
             }
@@ -97,7 +101,11 @@ class DependencyChecker:
                 "passed": False,
                 "level": "warn",
                 "message": f"Not installed: {names}.",
-                "action": "Run start.bat to install dependencies.",
+                "action": (
+                    "Run start.bat to install dependencies."
+                    if sys.platform == "win32"
+                    else "Run ./start.command to install dependencies."
+                ),
             }
         return {
             "name": "Package Metadata",
@@ -137,9 +145,36 @@ class DependencyChecker:
             }
 
     def check_wasapi(self):
-        """Check if WASAPI output devices are available for loopback capture."""
+        """Check if the platform's system-audio capture source is available."""
         try:
             devices = get_wasapi_output_devices()
+            if not is_windows():
+                if devices:
+                    if devices[0].get("hostapi") == "Core Audio Tap":
+                        return {
+                            "name": "System Audio Input",
+                            "passed": True,
+                            "level": "info",
+                            "message": "Native Core Audio capture is available.",
+                            "action": None,
+                        }
+                    return {
+                        "name": "System Audio Input",
+                        "passed": True,
+                        "level": "info",
+                        "message": f"Found virtual audio input: {devices[0]['name']}.",
+                        "action": None,
+                    }
+                return {
+                    "name": "System Audio Input",
+                    "passed": False,
+                    "level": "info",
+                    "message": "No supported virtual audio input found.",
+                    "action": (
+                        "Run ./start.command to build native macOS capture. "
+                        "On macOS before 14.4, install BlackHole and route system output to it."
+                    ),
+                }
             if devices:
                 return {
                     "name": "WASAPI Loopback",
@@ -356,6 +391,23 @@ class DependencyChecker:
 
     def check_windows_version(self):
         """Check Windows version for compatibility."""
+        if not is_windows():
+            import platform
+            if platform.system() == "Darwin":
+                return {
+                    "name": "Platform",
+                    "passed": True,
+                    "level": "info",
+                    "message": "macOS supported; per-app capture is unavailable.",
+                    "action": None,
+                }
+            return {
+                "name": "Platform",
+                "passed": False,
+                "level": "info",
+                "message": f"{platform.system()} is not a supported platform.",
+                "action": "TalkTrack supports Windows and macOS.",
+            }
         if is_windows_11():
             build = get_windows_build()
             return {

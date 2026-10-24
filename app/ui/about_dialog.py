@@ -33,7 +33,7 @@ class AboutDialog(QDialog):
 
         desc = QLabel(
             "AI-powered call recording, transcription, and speaker\n"
-            "diarization for Windows. Free and offline."
+            "diarization for Windows and macOS. Free and open source."
         )
         desc.setStyleSheet("font-size: 12px; color: #bac2de;")
         desc.setAlignment(Qt.AlignmentFlag.AlignCenter)

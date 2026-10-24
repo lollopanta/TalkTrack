@@ -1,11 +1,11 @@
 # TalkTrack
 
-Record, transcribe, and identify speakers from your calls — all locally on your machine. Free and open-source alternative to Evaer, Otter.ai, and Fireflies.
+Record, transcribe, and identify speakers from your calls. Recording and transcription run locally; optional AI providers can process transcript text in the cloud. Free and open-source alternative to Evaer, Otter.ai, and Fireflies.
 
-TalkTrack is a Windows desktop app for **recording and transcribing Microsoft Teams calls, Zoom meetings, Google Meet sessions**, and any other audio app. It uses [Faster Whisper](https://github.com/SYSTRAN/faster-whisper) for local speech-to-text and [pyannote.audio](https://github.com/pyannote/pyannote-audio) for speaker identification. Everything runs offline — no cloud services, no subscriptions, no data leaves your PC.
+TalkTrack is a desktop app for **recording and transcribing Microsoft Teams calls, Zoom meetings, Google Meet sessions**, and other audio apps on Windows and macOS. It uses [Faster Whisper](https://github.com/SYSTRAN/faster-whisper) for local speech-to-text and [pyannote.audio](https://github.com/pyannote/pyannote-audio) for speaker identification. Transcription runs locally; optional AI features can use cloud providers.
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue)
-![Platform](https://img.shields.io/badge/Platform-Windows-0078D6)
+![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS-0078D6)
 ![UI](https://img.shields.io/badge/UI-PyQt6-41CD52)
 ![License](https://img.shields.io/badge/License-MIT-green)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-yellow?logo=buymeacoffee)](https://buymeacoffee.com/obscureaintsecure)
@@ -24,7 +24,7 @@ TalkTrack is a Windows desktop app for **recording and transcribing Microsoft Te
 
 - **Record calls** with Record / Pause / Resume / Stop controls, live timer, and level meters
 - **Per-app audio capture** (Windows 11) — pick specific apps like Teams or Chrome
-- **System audio capture** (Windows 10+) — WASAPI loopback for all system audio
+- **System audio capture** — WASAPI loopback on Windows; virtual input on macOS
 - **Dual-channel recording** — microphone + system/app audio captured separately
 - **Auto-stop recording** — detects when your call app goes inactive and offers to stop
 - **Auto-start recording** — optionally start recording when a selected app joins a call (Settings > General)
@@ -55,7 +55,7 @@ TalkTrack is a Windows desktop app for **recording and transcribing Microsoft Te
 
 ## Quick Start
 
-### Prerequisites
+### Windows
 
 - Windows 10 or 11
 - Python 3.10+
@@ -121,6 +121,33 @@ On first run TalkTrack offers to add a Start Menu shortcut (also available any t
 
 For troubleshooting, use **`start_debug.bat`** which shows a console window with log output.
 
+### macOS
+
+- macOS 12 or newer and Python 3.10+; native capture is available from macOS 14.4
+- Install [uv](https://docs.astral.sh/uv/getting-started/installation/) or use Python's built-in `venv`
+- A microphone; grant TalkTrack microphone access when macOS prompts
+- macOS 14.4+: start with `start.command`; it builds TalkTrack's signed native Core Audio tap helper. macOS asks permission the first time system audio is captured.
+- macOS 12–14.3, or if native helper compilation is unavailable: install [BlackHole](https://github.com/ExistentialAudio/BlackHole) and route macOS output to it. Use Audio MIDI Setup to create a Multi-Output Device if you need to hear the call while recording. [BlackHole's setup guide](https://github.com/ExistentialAudio/BlackHole/wiki/Capture-System-Audio-with-BlackHole) has the steps.
+
+Run `chmod +x start.command` once, then open **`start.command`** in Finder. Or launch from Terminal:
+
+```bash
+uv sync --extra cpu
+./scripts/build_macos_audio_helper.sh
+uv run --no-sync python main.py
+```
+
+Without uv:
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+./scripts/build_macos_audio_helper.sh
+.venv/bin/python main.py
+```
+
+On macOS the app records the microphone directly. macOS 14.4+ captures system audio through Apple's native Core Audio process tap without an audio driver; earlier versions can use BlackHole. Per-app capture remains Windows 11-only. NVIDIA CUDA acceleration and Windows Start Menu integration are unavailable on macOS.
+
 ### Speaker Diarization (Optional)
 
 For multi-speaker identification (speaker 1, speaker 2, etc...), TalkTrack uses pyannote.audio which requires a free HuggingFace account. On first launch, a setup wizard walks you through the steps:
@@ -143,6 +170,8 @@ Without this setup, TalkTrack still works — it just labels speakers as "You" a
 **Windows 11:** Select specific apps (Teams, Chrome, etc.) in the app picker to capture only their audio.
 
 **Windows 10:** Captures all system audio via WASAPI loopback.
+
+**macOS:** Select the BlackHole virtual input after routing system output to it.
 
 ## How Transcription Works
 
@@ -243,7 +272,7 @@ Access via the gear icon or **Edit > Settings**:
 | Language | Auto-detect, or specify (en, es, etc.) | Auto-detect |
 | Sample Rate | 16000, 22050, 44100, 48000 Hz | 16000 |
 | Output Format | WAV, MP3 (requires FFmpeg) | WAV |
-| Capture Mode | Per-app (Win11) or System Audio | Auto-detected |
+| Capture Mode | Per-app (Windows 11), system loopback, or virtual input (macOS) | Auto-detected |
 | Diarization | Enabled/Disabled, min/max speakers | Disabled |
 | AI Provider | None, Claude, OpenAI, Grok, Gemini, Mistral, Groq, Local | None |
 | AI Model | Provider-specific model list | Varies |
@@ -257,7 +286,8 @@ Access via the gear icon or **Edit > Settings**:
 TalkTrack/
   main.py                    # Entry point, logging, crash handling
   start.bat                  # Launcher (uv-first, .venv isolation, pip fallback)
-  start_debug.bat            # Debug launcher with console output
+  start_debug.bat            # Windows debug launcher with console output
+  start.command              # macOS launcher
   requirements.txt           # Dependencies
   resources/
     style.qss                # Dark theme stylesheet
@@ -271,7 +301,7 @@ TalkTrack/
     audio/
       segment_player.py      # Audio clip playback
     recording/
-      audio_capture.py       # WASAPI capture (system + per-app)
+      audio_capture.py       # WASAPI / virtual input capture
       process_audio_capture.py  # Win11 per-process capture
       recorder.py            # Recording state machine
     transcription/
@@ -295,13 +325,13 @@ python -m pytest tests/ -v
 | Component | Library |
 |-----------|---------|
 | GUI | PyQt6 |
-| Audio Capture | sounddevice, WASAPI, comtypes |
+| Audio Capture | sounddevice; WASAPI/COM on Windows; Core Audio taps or BlackHole on macOS |
 | Transcription | faster-whisper |
 | Speaker Diarization | pyannote.audio 4.0 |
 | AI Providers | anthropic, openai, google-generativeai, mistralai, groq (on-demand) |
 | Deep Learning | PyTorch |
 | Audio Processing | scipy, pydub, soundfile, numpy |
-| Windows Integration | pywin32, pycaw, comtypes |
+| Windows Integration | pywin32, pycaw, comtypes (Windows only) |
 
 ## Use Cases
 
@@ -314,8 +344,9 @@ python -m pytest tests/ -v
 
 ## Known Limitations
 
-- **Windows only** — uses WASAPI and Windows COM APIs
-- **Per-app capture requires Windows 11** Build 22000+
+- macOS before 14.4 requires a virtual input such as BlackHole for system audio capture
+- Per-app capture is available only on Windows 11 Build 22000+
+- NVIDIA CUDA acceleration is available only on supported Windows/Linux systems
 - Per-process COM capture is in active development — the pipeline structure is in place, with packet reading being completed through real-device testing
 
 ## License

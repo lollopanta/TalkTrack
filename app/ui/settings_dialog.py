@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (
     QPushButton, QFileDialog, QGroupBox, QFormLayout, QMessageBox
 )
 from PyQt6.QtCore import Qt
+from app.utils.platform_info import is_macos, is_windows_11
 
 
 class SettingsDialog(QDialog):
@@ -45,6 +46,11 @@ class SettingsDialog(QDialog):
             "per-app picker becomes active (joins a call).\n"
             "Requires per-app capture mode on Windows 11."
         )
+        if not is_windows_11():
+            self.auto_record_cb.setEnabled(False)
+            self.auto_record_cb.setToolTip(
+                "Automatic call detection requires per-app capture on Windows 11."
+            )
         recording_form.addRow(self.auto_record_cb)
 
         self.auto_record_threshold_spin = QSpinBox()
@@ -58,6 +64,8 @@ class SettingsDialog(QDialog):
             "then silence-stops. Set to 0 to disable the threshold."
         )
         recording_form.addRow("Auto-record threshold:", self.auto_record_threshold_spin)
+        if not is_windows_11():
+            self.auto_record_threshold_spin.setEnabled(False)
 
         self.auto_transcribe_cb = QCheckBox("Automatically transcribe after recording")
         self.auto_transcribe_cb.setToolTip(
@@ -218,6 +226,11 @@ class SettingsDialog(QDialog):
         self.device_combo = QComboBox()
         self.device_combo.addItem("CPU", "cpu")
         self.device_combo.addItem("CUDA (NVIDIA GPU)", "cuda")
+        if is_macos():
+            self.device_combo.model().item(1).setEnabled(False)
+            self.device_combo.setToolTip(
+                "CUDA acceleration is available only on supported NVIDIA systems."
+            )
         self.device_combo.currentIndexChanged.connect(self._on_device_changed)
         whisper_form.addRow("Compute Device:", self.device_combo)
 
@@ -426,6 +439,8 @@ class SettingsDialog(QDialog):
             self.model_combo.setCurrentIndex(idx)
 
         device = self.config.get("transcription", "device")
+        if device == "cuda" and is_macos():
+            device = "cpu"
         idx = self.device_combo.findData(device)
         if idx >= 0:
             self.device_combo.setCurrentIndex(idx)

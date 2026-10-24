@@ -11,7 +11,7 @@ import shutil
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem,
-    QPushButton, QLabel, QMenu, QMessageBox
+    QPushButton, QLabel, QMenu, QMessageBox, QStackedLayout
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QAction
@@ -201,20 +201,31 @@ class RecordingsList(QWidget):
         self.search_bar.cleared.connect(self.refresh)
         layout.addWidget(self.search_bar)
 
-        # List
+        # List and helpful empty state share the same area.
+        list_container = QWidget()
+        stack = QStackedLayout(list_container)
+        stack.setStackingMode(QStackedLayout.StackingMode.StackAll)
         self.list_widget = QListWidget()
         self.list_widget.setMinimumHeight(100)
         self.list_widget.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
         self.list_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.list_widget.customContextMenuRequested.connect(self._show_context_menu)
         self.list_widget.itemDoubleClicked.connect(self._on_item_double_clicked)
-        layout.addWidget(self.list_widget, 1)
+        stack.addWidget(self.list_widget)
+        self.empty_label = QLabel("No recordings yet.\nStart a recording and it will appear here.")
+        self.empty_label.setObjectName("recordingsEmptyState")
+        self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.empty_label.setWordWrap(True)
+        self.empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        stack.addWidget(self.empty_label)
+        layout.addWidget(list_container, 1)
 
     def refresh(self):
         self.list_widget.clear()
         self._recordings = []
 
         if not self.recordings_dir.exists():
+            self._update_empty_state()
             return
 
         for entry in sorted(self.recordings_dir.iterdir(), reverse=True):
@@ -257,6 +268,16 @@ class RecordingsList(QWidget):
             item = QListWidgetItem(text)
             item.setData(Qt.ItemDataRole.UserRole, metadata)
             self.list_widget.addItem(item)
+        self._update_empty_state()
+
+    def _update_empty_state(self, message=None):
+        if message:
+            self.empty_label.setText(message)
+        elif self._recordings:
+            self.empty_label.setText("")
+        else:
+            self.empty_label.setText("No recordings yet.\nStart a recording and it will appear here.")
+        self.empty_label.setVisible(self.list_widget.count() == 0)
 
     def _on_item_double_clicked(self, item):
         data = item.data(Qt.ItemDataRole.UserRole)
@@ -313,7 +334,9 @@ class RecordingsList(QWidget):
         menu.exec(self.list_widget.mapToGlobal(position))
 
     def _open_folder(self, directory):
-        os.startfile(directory)
+        from PyQt6.QtCore import QUrl
+        from PyQt6.QtGui import QDesktopServices
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(directory)))
 
     def _delete_recording(self, metadata):
         directory = metadata.get("directory", "")
@@ -380,7 +403,9 @@ class RecordingsList(QWidget):
         audio_files = metadata.get("audio_files", {})
         audio_path = audio_files.get("combined") or audio_files.get("system") or audio_files.get("mic")
         if audio_path and os.path.exists(audio_path):
-            os.startfile(audio_path)
+            from PyQt6.QtCore import QUrl
+            from PyQt6.QtGui import QDesktopServices
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(audio_path)))
 
     def _on_search(self, query, is_semantic):
         # Only the latest query matters; typing while a search runs replaces
@@ -418,6 +443,9 @@ class RecordingsList(QWidget):
             item = QListWidgetItem(display)
             item.setData(Qt.ItemDataRole.UserRole, result)
             self.list_widget.addItem(item)
+        self._update_empty_state(
+            "No matches found.\nTry a different search." if not results else None
+        )
 
     def _format_duration(self, seconds):
         h = int(seconds // 3600)

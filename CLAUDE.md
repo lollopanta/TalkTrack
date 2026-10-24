@@ -15,12 +15,12 @@ Topic-specific rules are in `.claude/rules/`. `ways-of-working.md` is always loa
 
 ## Project Overview
 
-TalkTrack is a Windows desktop application that records, transcribes, and diarizes audio from calls (Teams, Zoom, etc.). It is a modern clone of Evaer for Teams with AI-powered transcription and speaker identification.
+TalkTrack is a Windows and macOS desktop application that records, transcribes, and diarizes audio from calls (Teams, Zoom, etc.). Windows supports WASAPI and Windows 11 per-app capture; macOS 14.4+ uses Apple's native Core Audio process taps, with BlackHole available on older macOS.
 
 ## Tech Stack
 
 - **GUI:** PyQt6
-- **Audio Capture:** sounddevice + WASAPI, comtypes (Win11 per-process capture)
+- **Audio Capture:** sounddevice; WASAPI and comtypes on Windows, virtual input on macOS
 - **Audio Session Enumeration:** pycaw (Windows Core Audio API)
 - **Transcription:** faster-whisper (local OpenAI Whisper, no internet needed)
 - **Speaker Diarization:** pyannote.audio 4.0 (requires free HuggingFace token)
@@ -28,7 +28,7 @@ TalkTrack is a Windows desktop application that records, transcribes, and diariz
 - **Audio Processing:** scipy, pydub, soundfile, numpy
 - **Process Detection:** psutil (for known audio app enumeration)
 - **NLP/Embeddings:** transformers, sentence-transformers (pyannote dependencies)
-- **Windows Integration:** pywin32, comtypes
+- **Windows Integration:** pywin32, comtypes (Windows only)
 
 ## Project Structure
 
@@ -312,5 +312,5 @@ When running shell commands:
 
 ## Known Limitations
 
-- **Windows only:** Uses WASAPI and Windows COM APIs
-- **Per-app capture requires Windows 11 Build 22000+**
+- **macOS system audio capture** requires a virtual input such as BlackHole, configured in Audio MIDI Setup
+- **Per-app capture is Windows-only** and requires Windows 11 Build 22000+

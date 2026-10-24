@@ -1,5 +1,7 @@
 import logging
+import platform
 import shutil
+import struct
 import threading
 import time
 import numpy as np
@@ -8,7 +10,12 @@ import soundfile as sf
 from pathlib import Path
 
 from app.recording.chunk_writer import ChunkWriter
-from app.recording.process_audio_capture import ProcessAudioCapture, _Resampler
+from app.audio.resampler import Resampler as _Resampler
+from app.utils.audio_devices import MACOS_CORE_AUDIO_TAP_DEVICE
+if platform.system() == "Windows":
+    from app.recording.process_audio_capture import ProcessAudioCapture
+else:
+    ProcessAudioCapture = None
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +100,7 @@ class AudioStream:
 
 
 class LoopbackStream:
-    """Captures system audio via WASAPI loopback using PyAudioWPatch."""
+    """Capture system audio via WASAPI or a macOS virtual input device."""
 
     def __init__(self, device_name=None, sample_rate=16000, level_callback=None,
                  sink=None):
@@ -113,6 +120,8 @@ class LoopbackStream:
         # producing discontinuities at chunk boundaries that sounded like
         # faint crackle during remote speech.
         self._resampler = None
+        self._process = None
+        self._reader_thread = None
 
     def _find_loopback_device(self):
         """Find the WASAPI loopback device matching the selected output."""
@@ -152,12 +161,15 @@ class LoopbackStream:
         raise RuntimeError("No WASAPI loopback device found")
 
     def start(self):
-        import pyaudiowpatch as pyaudio
-
         self._recording = True
         self._paused = False
 
         try:
+            if platform.system() == "Darwin":
+                self._start_macos_input()
+                return
+
+            import pyaudiowpatch as pyaudio
             loopback_dev = self._find_loopback_device()
             self._native_rate = int(loopback_dev["defaultSampleRate"])
             self._native_channels = loopback_dev["maxInputChannels"]
@@ -186,6 +198,171 @@ class LoopbackStream:
             self._recording = False
             self.stop()
             raise
+
+    def _start_macos_input(self):
+        """Capture native system audio or a virtual input on macOS."""
+        if self._device_name == MACOS_CORE_AUDIO_TAP_DEVICE:
+            self._start_macos_core_audio_tap()
+            return
+
+        devices = sd.query_devices()
+        matches = [
+            (index, dev) for index, dev in enumerate(devices)
+            if dev.get("name") == self._device_name
+            and dev.get("max_input_channels", 0) > 0
+        ]
+        if not matches:
+            raise RuntimeError(
+                f"Virtual system-audio input '{self._device_name}' is unavailable. "
+                "Install BlackHole and route system audio to it."
+            )
+        index, device = matches[0]
+        self._native_rate = int(device["default_samplerate"])
+        self._native_channels = min(2, int(device["max_input_channels"]))
+        self._resampler = _Resampler(self._native_rate, self._target_rate)
+        self._stream = sd.InputStream(
+            device=index,
+            samplerate=self._native_rate,
+            channels=self._native_channels,
+            callback=self._macos_callback,
+            dtype="float32",
+        )
+        self._stream.start()
+        logger.info("System audio input: %s (rate=%d, ch=%d)",
+                    device["name"], self._native_rate, self._native_channels)
+
+    @staticmethod
+    def _read_exact(stream, length):
+        chunks = []
+        remaining = length
+        while remaining:
+            chunk = stream.read(remaining)
+            if not chunk:
+                return None
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        return b"".join(chunks)
+
+    def _start_macos_core_audio_tap(self):
+        """Start the bundled Core Audio tap helper and read its PCM stream."""
+        helper = (Path(__file__).resolve().parents[2] / ".build"
+                  / "TalkTrackAudioCapture.app" / "Contents" / "MacOS"
+                  / "TalkTrackAudioCapture")
+        if not helper.is_file():
+            raise RuntimeError(
+                "The native macOS audio helper is not built. Run ./start.command "
+                "from the TalkTrack folder, then restart the app."
+            )
+
+        import subprocess
+        self._process = subprocess.Popen(
+            [str(helper)], stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0,
+        )
+        process = self._process
+
+        def _drain_stderr():
+            for line in process.stderr:
+                logger.info("Core Audio tap: %s", line.decode(errors="replace").rstrip())
+
+        threading.Thread(target=_drain_stderr, daemon=True,
+                         name="CoreAudioTapLog").start()
+        header = self._read_exact(process.stdout, 12)
+        if header is None:
+            self._stop_macos_helper()
+            raise RuntimeError(
+                "macOS did not start system-audio capture. Check the macOS "
+                "System Audio Recording permission and try again."
+            )
+        magic, sample_rate, channels, bits = struct.unpack("<4sIHH", header)
+        if magic != b"TTCA" or channels < 1 or bits != 32:
+            self._stop_macos_helper()
+            raise RuntimeError("The native macOS audio helper returned an unsupported format.")
+        self._native_rate = sample_rate
+        self._native_channels = channels
+        self._resampler = _Resampler(sample_rate, self._target_rate)
+        logger.info("Native Core Audio tap started (rate=%d, channels=%d)",
+                    sample_rate, channels)
+        self._reader_thread = threading.Thread(
+            target=self._read_macos_tap_audio, daemon=True,
+            name="CoreAudioTapReader",
+        )
+        self._reader_thread.start()
+
+    def _read_macos_tap_audio(self):
+        pending = b""
+        try:
+            while self._recording and self._process and self._process.stdout:
+                block = self._process.stdout.read(8192)
+                if not block:
+                    break
+                payload = pending + block
+                usable = len(payload) - (len(payload) % 4)
+                pending = payload[usable:]
+                if not usable:
+                    continue
+                samples = np.frombuffer(payload[:usable], dtype="<f4")
+                if self._native_channels > 1:
+                    samples = samples[:len(samples) - len(samples) % self._native_channels]
+                    if samples.size == 0:
+                        continue
+                    samples = samples.reshape(-1, self._native_channels).mean(axis=1)
+                samples = samples.astype(np.float32, copy=False)
+                if self._resampler is not None:
+                    samples = self._resampler.push(samples)
+                if samples.size:
+                    if self._sink is not None:
+                        self._sink.put(samples)
+                    if self._level_callback is not None:
+                        self._level_callback(samples)
+        except Exception:
+            logger.exception("Error reading native Core Audio tap stream")
+        finally:
+            if self._recording:
+                logger.warning("Native Core Audio tap stream ended unexpectedly")
+                self._recording = False
+
+    def _stop_macos_helper(self):
+        process = self._process
+        self._process = None
+        if process is None:
+            return
+        try:
+            if process.poll() is None:
+                process.terminate()
+            process.wait(timeout=5)
+        except Exception:
+            try:
+                process.kill()
+                process.wait(timeout=2)
+            except Exception:
+                logger.exception("Could not stop native macOS audio helper")
+        if self._reader_thread is not None and self._reader_thread is not threading.current_thread():
+            self._reader_thread.join(timeout=2)
+        self._reader_thread = None
+        for stream in (process.stdout, process.stderr):
+            if stream:
+                try:
+                    stream.close()
+                except OSError:
+                    pass
+
+    def _macos_callback(self, indata, frames, time_info, status):
+        if status:
+            logger.debug("System audio input status: %s", status)
+        if not self._recording or self._paused:
+            return
+        chunk = indata.copy()
+        if chunk.ndim > 1:
+            chunk = chunk.mean(axis=1).astype(np.float32)
+        if self._resampler is not None:
+            chunk = self._resampler.push(chunk)
+        if chunk.size == 0:
+            return
+        if self._sink is not None:
+            self._sink.put(chunk)
+        if self._level_callback is not None:
+            self._level_callback(chunk)
 
     def _callback(self, in_data, frame_count, time_info, status):
         import pyaudiowpatch as pyaudio
@@ -225,9 +402,16 @@ class LoopbackStream:
 
     def stop(self):
         self._recording = False
+        if self._process is not None:
+            self._stop_macos_helper()
+            self._stream = None
+            return
         if self._stream:
             try:
-                self._stream.stop_stream()
+                if platform.system() == "Darwin":
+                    self._stream.stop()
+                else:
+                    self._stream.stop_stream()
                 self._stream.close()
             except Exception:
                 logger.exception("Error closing loopback stream")
@@ -442,8 +626,12 @@ class DualAudioCapture:
         elif self.loopback_device is not None:
             writer = None
             try:
-                dev_info = sd.query_devices(self.loopback_device)
-                device_name = dev_info.get("name", "")
+                if (platform.system() == "Darwin"
+                        and self.loopback_device == MACOS_CORE_AUDIO_TAP_DEVICE):
+                    device_name = MACOS_CORE_AUDIO_TAP_DEVICE
+                else:
+                    dev_info = sd.query_devices(self.loopback_device)
+                    device_name = dev_info.get("name", "")
                 logger.info("System audio: looking for loopback of '%s'", device_name)
 
                 writer = ChunkWriter(self.output_dir / "system_audio.wav",
