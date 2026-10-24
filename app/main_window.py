@@ -86,12 +86,14 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle("TalkTrack — Studio")
         self.setMinimumSize(1000, 620)
-        self.resize(1260, 800)
 
         self._setup_menu()
         self._setup_ui()
         self._setup_statusbar()
         self._connect_signals()
+
+        # Apply the startup size after the central widget and layouts exist.
+        self.resize(1260, 800)
 
         self._really_quit = False
         self._success_pending = False
