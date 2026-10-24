@@ -212,6 +212,20 @@ class TranscriptViewer(QWidget):
     def _on_cancel_clicked(self):
         self.cancel_requested.emit()
 
+    def _clear_segment_layout(self):
+        """Remove transcript rows while keeping the placeholder alive.
+
+        The placeholder is reused across refreshes. Deleting it with
+        ``deleteLater`` left ``self._placeholder`` pointing at a dead Qt object,
+        so a subsequent diarization completion could crash while hiding it.
+        """
+        while self._segments_layout.count():
+            item = self._segments_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None and widget is not self._placeholder:
+                widget.deleteLater()
+        self._segments_layout.addWidget(self._placeholder)
+
     def display_transcript(self, transcript, speaker_names=None):
         """Render transcript with interactive segment widgets."""
         self._transcript = transcript
@@ -232,10 +246,7 @@ class TranscriptViewer(QWidget):
         # Clear existing segment widgets
         self._placeholder.hide()
         self._segment_widgets.clear()
-        while self._segments_layout.count():
-            item = self._segments_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+        self._clear_segment_layout()
 
         # Build segment widgets
         from app.ui.segment_widget import SegmentWidget
@@ -283,18 +294,10 @@ class TranscriptViewer(QWidget):
 
         # Remove segment widgets
         self._segment_widgets.clear()
-        while self._segments_layout.count():
-            item = self._segments_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+        self._clear_segment_layout()
 
         # Restore placeholder
-        self._placeholder = QLabel(
-            "Transcript will appear here after recording and transcription..."
-        )
-        self._placeholder.setObjectName("transcriptPlaceholder")
-        self._placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._segments_layout.addWidget(self._placeholder)
+        self._placeholder.show()
         self._segments_layout.addStretch()
 
         # Disable export, playback, and transcribe buttons
